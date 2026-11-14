@@ -15,55 +15,40 @@
 
 <div align="center">
 
-[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat-square&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
-[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat-square&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
-[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat-square&label=License)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
+[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
+[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat&label=License)](LICENSE)
 
 </div>
 
 ## What is Vista VPN?
 
-**Vista VPN** is a free, open-source VPN that works with a Firefox Account. It carries your internet traffic through Mozilla's servers, on **Fastly**'s infrastructure, over secure **HTTP/1.1, HTTP/2, and HTTP/3** tunnels.
+**Vista VPN** is an independent, open-source VPN client for Firefox Accounts. It routes your traffic through Mozilla's VPN servers on **Fastly** infrastructure using **HTTP/1.1, HTTP/2, and HTTP/3** tunnels.
 
 For **Android, Windows, macOS, and Linux**; completely free, with no ads.
 
 <p align="center"><a href="https://raw.githubusercontent.com/thisisvista/vista-vpn/main/docs/screenshots/main.webp" target="_blank"><img src="docs/screenshots/main.webp" width="720" alt="Vista VPN"></a></p>
 
-## 🚀 Main features
+## Features
 
-Cross-platform: Android, Windows, macOS, and Linux
+- **Cross-platform:** Android, Windows, macOS, and Linux.
+- **Android TV support:** designed for remote-control navigation.
+- **Straightforward interface:** essential connection controls in one place.
+- **Free allowance:** 50 GB per month for each Firefox Account.
+- **Server selection:** choose a location after checking latency, or let Vista select one automatically.
+- **Modern transport:** connection support for HTTP/1.1, HTTP/2, and HTTP/3.
+- **Firefox-compatible TLS:** connections to Mozilla begin with a Firefox-style TLS fingerprint through uTLS.
+- **Split tunneling:** decide which sites and apps bypass the VPN.
+- **Restricted-network options:** TLS fragmentation, an upstream SOCKS5 proxy, and an optional [relay server](docs/relay/README.md).
+- **Backup and restore:** export accounts and settings for use on another device or server.
+- **Network controls:** IPv4, IPv6, dual-stack mode, and custom MTU.
+- **Encrypted DNS:** DNS over HTTPS.
+- **Localization:** 15 languages, including English, Persian, Chinese, and Russian.
+- **Appearance:** light and dark themes.
+- **Open source:** the project code is available for inspection and contribution.
+- **Updates:** automatic update support.
 
-📺 Android TV: works with the remote control
-
-Very easy to use, with a simple interface
-
-🆓 Free: 50 GB a month for every Firefox Account
-
-🌐 Mozilla's servers: choose a country with a ping test, or let the app pick the best server
-
-⚡ Fast, stable connections over HTTP/1.1, HTTP/2, and HTTP/3
-
-🦊 Looks like Firefox: connections to Mozilla start with Firefox's own TLS fingerprint (uTLS)
-
-🔀 Smart routing (split tunneling): choose the sites and apps that skip the VPN
-
-🧱 If your network blocks the connection: TLS fragmentation, upstream SOCKS5 proxy, and a [relay server](docs/relay/README.md)
-
-💾 Backup and import: your accounts and settings in one file, for another device or a server
-
-⚙️ Advanced connection options: IPv4, IPv6, or dual-stack, and a custom MTU
-
-🔒 Encrypted DNS (DNS over HTTPS)
-
-🌍 15 languages, including English, Persian, Chinese, and Russian
-
-🌙 Light and dark themes
-
-🛡 Open source, secure, and community-driven
-
-🔄 Automatic updates
-
-## 📸 Screenshots
+## Screenshots
 
 <p align="center">
 <img src="docs/screenshots/phone_01.webp" width="240" alt="Home">&nbsp;&nbsp;
@@ -71,7 +56,7 @@ Very easy to use, with a simple interface
 <img src="docs/screenshots/phone_03.webp" width="240" alt="Settings">
 </p>
 
-## 📥 Download
+## Downloads
 
 <table>
 <thead>
@@ -93,7 +78,7 @@ Very easy to use, with a simple interface
 - **Windows:** **Setup** is a normal installer; **Portable** needs no install and runs from any folder.
 - **Linux:** **App** for a Linux desktop (with a graphical environment); **Core** for a server (without a graphical environment, with a web panel).
 
-## 💻 Install and update on Linux and macOS
+## Linux and macOS installation
 
 > Windows and Android users don't need this section: take the installer from the "Download" table above.
 
@@ -101,7 +86,7 @@ Very easy to use, with a simple interface
 curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.sh | bash
 ```
 
-### 🌐 Web panel
+### Web panel
 
 For Linux servers, Vista VPN has a **web panel** that opens in any browser and has everything the app has: managing accounts and data, choosing a server and testing delay, the connection test, the live log, and every setting.
 
@@ -110,7 +95,7 @@ For Linux servers, Vista VPN has a **web panel** that opens in any browser and h
 - **Panel address:** `http://SERVER-IP:10820/app/`, with a username and password. The exact address is shown at the end of the install.
 - **Proxy:** SOCKS5 and HTTP on port `10810`, with a username and password of its own.
 
-### ⌨️ Managing from the terminal
+### Terminal management
 
 On the server, run `sudo vista-vpn` to open the management menu:
 
