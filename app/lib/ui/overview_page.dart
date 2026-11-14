@@ -1390,9 +1390,9 @@ class _PhoneHome extends StatelessWidget {
                 connected: connected,
                 palette: p,
               ),
-              // Keep the server and usage cards visually separated from the
-              // connection state and its hints on phone-sized layouts.
-              SizedBox(height: short ? 14 : 28),
+              // Give the server and usage cards a clearly visible break
+              // after the connection state and its hints on phone layouts.
+              SizedBox(height: short ? 28 : 52),
               if (short)
                 IntrinsicHeight(
                   child: Row(
