@@ -1720,29 +1720,20 @@ class _PowerOrbState extends State<_PowerOrb>
               height: disc,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: on
-                      ? [
-                          Color.lerp(widget.accent, Colors.white, 0.28)!,
-                          widget.accent,
-                        ]
-                      : p.discOff,
-                ),
+                // Match Android: the disc follows the app theme, never the
+                // VPN state. Only the V circuit traces change state color.
+                color: p.dark ? const Color(0xFF171C2B) : Colors.white,
                 border: Border.all(
-                  color: on
-                      ? Colors.white.withValues(alpha: 0.4)
-                      : p.discOffEdge,
+                  color: p.dark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : const Color(0x180A1024),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: on
-                        ? widget.accent.withValues(alpha: 0.5)
-                        : (p.dark ? Colors.black : const Color(0xFF2A3375))
-                              .withValues(alpha: p.dark ? 0.45 : 0.14),
-                    blurRadius: on ? 36 : 26,
+                    color: (p.dark ? Colors.black : const Color(0xFF2A3375))
+                        .withValues(alpha: p.dark ? 0.45 : 0.14),
+                    blurRadius: 26,
                     offset: const Offset(0, 10),
                   ),
                 ],
