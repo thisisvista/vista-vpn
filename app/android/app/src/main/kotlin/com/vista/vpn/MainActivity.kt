@@ -135,6 +135,11 @@ class MainActivity : FlutterActivity() {
                 "isRunning" -> result.success(mobile.Mobile.running())
                 "connectionMode" -> result.success(CoreService.connectionMode(this))
                 "showSpeed" -> result.success(CoreService.showSpeed(this))
+                "killSwitchEnabled" -> result.success(CoreService.killSwitchEnabled(this))
+                "setKillSwitchEnabled" -> {
+                    CoreService.setKillSwitchEnabled(this, call.argument<Boolean>("on") == true)
+                    result.success(null)
+                }
                 "setShowSpeed" -> {
                     CoreService.setShowSpeed(this, call.argument<Boolean>("on") == true)
                     result.success(null)
