@@ -14,7 +14,7 @@ name: Build
 
 on:
   push:
-    branches: [main, 'infra/**', 'fix/windows-iss-files-section']
+    branches: [main, 'infra/**', 'fix/windows-iss-files-section', 'fix/windows-vista-branding']
     tags: ['v*']
     # A change to Markdown or documentation images alone
     # runs nothing; GitHub does not apply this filter to tags, so a release
@@ -115,7 +115,7 @@ jobs:
     needs: test
     # Built unless the repository variable PLATFORMS (Settings, Secrets and
     # variables, Actions, Variables) is set and leaves it out, e.g. "linux".
-    if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'fix/windows-iss-files-section') || (github.event_name == 'push' && github.ref == 'refs/heads/fix/windows-iss-files-section')) && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'windows'))
+    if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'fix/windows-iss-files-section' || github.head_ref == 'fix/windows-vista-branding')) || (github.event_name == 'push' && (github.ref == 'refs/heads/fix/windows-iss-files-section' || github.ref == 'refs/heads/fix/windows-vista-branding'))) && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'windows'))
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -130,6 +130,14 @@ jobs:
           cache: true
       - name: Inno Setup
         run: choco upgrade innosetup -y --no-progress
+      # Windows must generate the same Vista icons as Android before Flutter
+      # packages the app; otherwise the checked-in legacy icons ship as-is.
+      - name: Generate branded app icons
+        shell: pwsh
+        run: |
+          python -m pip install Pillow
+          Push-Location app
+          try { python tool/app_icons.py } finally { Pop-Location }
       - name: Build
         shell: pwsh
         env:
@@ -250,7 +258,7 @@ jobs:
 
   linux:
     needs: test
-    if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'linux'))
+    if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'fix/windows-vista-branding') || (github.event_name == 'push' && github.ref == 'refs/heads/fix/windows-vista-branding')) && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'linux'))
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -258,6 +266,11 @@ jobs:
         with:
           go-version-file: core/go.mod
           cache-dependency-path: core/go.sum
+      - name: Generate Vista desktop and core icons
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vista-icon-venv"
+          "$RUNNER_TEMP/vista-icon-venv/bin/python" -m pip install --upgrade pip Pillow
+          cd app && "$RUNNER_TEMP/vista-icon-venv/bin/python" tool/app_icons.py
       - name: Build
         run: bash scripts/build-linux-core.sh
       - uses: actions/upload-artifact@v7
@@ -268,7 +281,7 @@ jobs:
 
   linux-desktop:
     needs: test
-    if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'linux'))
+    if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'fix/windows-vista-branding') || (github.event_name == 'push' && github.ref == 'refs/heads/fix/windows-vista-branding')) && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'linux'))
     strategy:
       matrix:
         include:
@@ -302,6 +315,11 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev
+      - name: Generate Vista desktop and core icons
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vista-icon-venv"
+          "$RUNNER_TEMP/vista-icon-venv/bin/python" -m pip install --upgrade pip Pillow
+          cd app && "$RUNNER_TEMP/vista-icon-venv/bin/python" tool/app_icons.py
       # A real TUN, as root, for a minute (internal/tunservice/e2e_test.go):
       # this computer is CI's.
       - name: TUN end to end
@@ -340,7 +358,7 @@ jobs:
 
   macos:
     needs: test
-    if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'macos'))
+    if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'fix/windows-vista-branding') || (github.event_name == 'push' && github.ref == 'refs/heads/fix/windows-vista-branding')) && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'macos'))
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -353,6 +371,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Generate Vista desktop and core icons
+        run: |
+          python3 -m pip install --break-system-packages Pillow
+          cd app && python3 tool/app_icons.py
       # What runs only on macOS: the system proxy, the TUN service and its
       # socket, DNS settings, the core's binding outside the TUN, and the
       # app's update.

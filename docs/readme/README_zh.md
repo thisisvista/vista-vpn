@@ -15,49 +15,40 @@
 
 <div align="center">
 
-[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat-square&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
-[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat-square&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
-[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat-square&label=License)](../../LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
+[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
+[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat&label=License)](../../LICENSE)
 
 </div>
 
 ## Vista VPN 是什么？
 
-**Vista VPN** 是一款免费、开源的 VPN，使用 Firefox 账户（Firefox Account）登录。它通过 Mozilla 的服务器，基于 **Fastly** 的基础设施，以安全的 **HTTP/2 和 HTTP/3** 隧道传输你的网络流量。
+**Vista VPN** 是一款面向 Firefox 账户的独立开源 VPN 客户端。它通过 Fastly 基础设施上的 Mozilla VPN 服务器，使用 **HTTP/1.1、HTTP/2 和 HTTP/3** 隧道传输网络流量。
 
 支持 **Android、Windows、macOS 和 Linux**；完全免费，没有广告。
 
 <p align="center"><a href="https://raw.githubusercontent.com/thisisvista/vista-vpn/main/docs/screenshots/main.webp" target="_blank"><img src="../screenshots/main.webp" width="720" alt="Vista VPN"></a></p>
 
-## 🚀 主要功能
+## 功能
 
-✈️ 跨平台：Android、Windows、macOS 和 Linux
+- **多平台支持：** Android、Windows、macOS 和 Linux。
+- **Android TV：** 可使用遥控器进行操作。
+- **简洁界面：** 将常用连接控制集中在清晰的界面中。
+- **免费流量：** 每个 Firefox 账户每月 50 GB。
+- **服务器选择：** 测试延迟后手动选择地区，也可以交由 Vista 自动选择。
+- **连接协议：** 支持 HTTP/1.1、HTTP/2 和 HTTP/3。
+- **兼容 Firefox 的 TLS：** 通过 uTLS，使连接 Mozilla 服务器时使用类似 Firefox 的 TLS 指纹。
+- **分流模式：** 指定绕过 VPN 的网站和应用（Split Tunneling）。
+- **受限网络选项：** TLS 分片、上游 SOCKS5 代理，以及可选的[中继服务器](../relay/README.md)。
+- **备份与恢复：** 导出账户和设置，以便在其他设备或服务器上使用。
+- **网络设置：** IPv4、IPv6、双栈模式和自定义 MTU。
+- **加密 DNS：** 支持 DNS over HTTPS。
+- **多语言：** 提供 15 种语言，包括中文、英语、波斯语和俄语。
+- **界面主题：** 浅色和深色模式。
+- **开源项目：** 项目代码开放，便于查看和参与改进。
+- **自动更新：** 支持自动更新。
 
-📺 Android TV：支持遥控器操作
-
-⭐ 界面简洁，非常易用
-
-🆓 免费：每个 Firefox 账户每月 50 GB
-
-🌐 Mozilla 服务器：通过延迟测试选择国家，或自动选择最佳服务器
-
-⚡ 基于 HTTP/2 和 HTTP/3 的快速、稳定连接
-
-🔀 智能分流（Split Tunneling）：选择不通过 VPN 的网站和应用
-
-🧱 如果你的网络封锁了连接：TLS 分片、上游 SOCKS5 代理和[中继服务器](../relay/README.md)
-
-🔒 加密 DNS（DNS over HTTPS）
-
-🌍 支持 15 种语言，包括英语、波斯语、中文和俄语
-
-🌙 浅色和深色主题
-
-🛡 开源、安全、社区驱动
-
-🔄 自动更新
-
-## 📸 截图
+## 截图
 
 <p align="center">
 <img src="../screenshots/phone_01.webp" width="240" alt="Home">&nbsp;&nbsp;
@@ -65,7 +56,7 @@
 <img src="../screenshots/phone_03.webp" width="240" alt="Settings">
 </p>
 
-## 📥 下载
+## 下载
 
 <table>
 <thead>
@@ -87,7 +78,7 @@
 - **Windows：** **Setup** 是普通安装程序；**Portable** 无需安装，可在任意文件夹运行。
 - **Linux：** **App** 用于 Linux 桌面（有图形界面）；**Core** 用于服务器（无图形界面，带网页面板）。
 
-## 💻 在 Linux 和 macOS 上安装与更新
+## Linux 和 macOS 安装
 
 > Windows 和 Android 用户无需阅读本节：直接从上方“下载”表格获取安装文件。
 
@@ -95,7 +86,7 @@
 curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.sh | bash
 ```
 
-### 🌐 网页面板
+### 网页面板
 
 在 Linux 服务器上，Vista VPN 提供一个**网页面板**，可在任何浏览器中打开，拥有应用的全部功能：管理账户和流量、选择服务器并测试延迟、连接测试、实时日志以及所有设置。
 
@@ -104,7 +95,7 @@ curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.
 - **面板地址：** `http://SERVER-IP:10820/app/`，需要用户名和密码。安装结束时会显示确切地址。
 - **代理：** 端口 `10810` 上的 SOCKS5 和 HTTP，使用单独的用户名和密码。
 
-### ⌨️ 在终端中管理
+### 终端管理
 
 在服务器上运行 `sudo vista-vpn`，即可打开管理菜单：
 

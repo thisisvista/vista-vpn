@@ -15,49 +15,40 @@
 
 <div align="center">
 
-[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat-square&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
-[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat-square&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
-[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat-square&label=License)](../../LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
+[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
+[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat&label=License)](../../LICENSE)
 
 </div>
 
 ## Что такое Vista VPN?
 
-**Vista VPN** — бесплатный VPN с открытым исходным кодом, который работает с аккаунтом Firefox (Firefox Account). Он передаёт ваш интернет-трафик через серверы Mozilla, на инфраструктуре **Fastly**, по защищённым туннелям **HTTP/2 и HTTP/3**.
+**Vista VPN** — независимый VPN-клиент с открытым исходным кодом для аккаунтов Firefox. Он направляет трафик через VPN-серверы Mozilla на инфраструктуре **Fastly**, используя туннели **HTTP/1.1, HTTP/2 и HTTP/3**.
 
 Для **Android, Windows, macOS и Linux**; полностью бесплатно, без рекламы.
 
 <p align="center"><a href="https://raw.githubusercontent.com/thisisvista/vista-vpn/main/docs/screenshots/main.webp" target="_blank"><img src="../screenshots/main.webp" width="720" alt="Vista VPN"></a></p>
 
-## 🚀 Основные возможности
+## Возможности
 
-✈️ Кроссплатформенность: Android, Windows, macOS и Linux
+- **Несколько платформ:** Android, Windows, macOS и Linux.
+- **Поддержка Android TV:** управление с помощью пульта.
+- **Понятный интерфейс:** основные элементы управления подключением собраны в одном месте.
+- **Бесплатный трафик:** 50 ГБ в месяц для каждого аккаунта Firefox.
+- **Выбор сервера:** выберите страну после проверки задержки или доверьте выбор Vista.
+- **Протоколы подключения:** поддержка HTTP/1.1, HTTP/2 и HTTP/3.
+- **Совместимость TLS с Firefox:** соединения с серверами Mozilla начинаются с TLS-отпечатка в стиле Firefox с помощью uTLS.
+- **Раздельная маршрутизация:** укажите сайты и приложения, которые должны обходить VPN (Split Tunneling).
+- **Для сетей с ограничениями:** фрагментация TLS, вышестоящий прокси SOCKS5 и [сервер-ретранслятор](../relay/README.md).
+- **Резервная копия:** экспорт аккаунтов и настроек для переноса на другое устройство или сервер.
+- **Параметры сети:** IPv4, IPv6, двойной стек и настраиваемый MTU.
+- **Зашифрованный DNS:** поддержка DNS over HTTPS.
+- **Локализация:** 15 языков, включая русский, английский, персидский и китайский.
+- **Оформление:** светлая и тёмная темы.
+- **Открытый исходный код:** код проекта доступен для изучения и участия в разработке.
+- **Обновления:** поддержка автоматического обновления.
 
-📺 Android TV: управление с пульта
-
-⭐ Очень простой в использовании, с понятным интерфейсом
-
-🆓 Бесплатно: 50 ГБ в месяц на каждый аккаунт Firefox
-
-🌐 Серверы Mozilla: выбор страны с проверкой пинга или автоматический выбор лучшего сервера
-
-⚡ Быстрое и стабильное соединение по HTTP/2 и HTTP/3
-
-🔀 Умная маршрутизация (Split Tunneling): выберите сайты и приложения, которые не идут через VPN
-
-🧱 Если ваша сеть блокирует подключение: фрагментация TLS, вышестоящий прокси SOCKS5 и [сервер-ретранслятор](../relay/README.md)
-
-🔒 Зашифрованный DNS (DNS over HTTPS)
-
-🌍 15 языков, включая английский, персидский, китайский и русский
-
-🌙 Светлая и тёмная темы
-
-🛡 Открытый исходный код, безопасность и развитие сообществом
-
-🔄 Автоматические обновления
-
-## 📸 Скриншоты
+## Скриншоты
 
 <p align="center">
 <img src="../screenshots/phone_01.webp" width="240" alt="Home">&nbsp;&nbsp;
@@ -65,7 +56,7 @@
 <img src="../screenshots/phone_03.webp" width="240" alt="Settings">
 </p>
 
-## 📥 Скачать
+## Загрузка
 
 <table>
 <thead>
@@ -87,7 +78,7 @@
 - **Windows:** **Setup** — обычный установщик; **Portable** работает без установки из любой папки.
 - **Linux:** **App** — для Linux с рабочим столом (с графической средой); **Core** — для сервера (без графической среды, с веб-панелью).
 
-## 💻 Установка и обновление в Linux и macOS
+## Установка в Linux и macOS
 
 > Пользователям Windows и Android этот раздел не нужен: возьмите установочный файл из таблицы «Скачать» выше.
 
@@ -95,7 +86,7 @@
 curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.sh | bash
 ```
 
-### 🌐 Веб-панель
+### Веб-панель
 
 Для серверов Linux у Vista VPN есть **веб-панель**, которая открывается в любом браузере и умеет всё, что умеет приложение: управление аккаунтами и трафиком, выбор сервера и проверка задержки, проверка соединения, живой журнал и все настройки.
 
@@ -104,7 +95,7 @@ curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.
 - **Адрес панели:** `http://SERVER-IP:10820/app/`, с именем пользователя и паролем. Точный адрес показывается в конце установки.
 - **Прокси:** SOCKS5 и HTTP на порту `10810`, с отдельными именем пользователя и паролем.
 
-### ⌨️ Управление из терминала
+### Управление из терминала
 
 На сервере выполните `sudo vista-vpn`, чтобы открыть меню управления:
 

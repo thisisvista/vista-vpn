@@ -9,61 +9,46 @@
 
 <h1 align="center">Vista VPN</h1>
 
-<h2 align="center">⚠️ Unofficial project</h2>
+<h2 align="center">⚠️ Independent project</h2>
 
-<h3 align="center">Vista VPN is an independent project. It is not made, owned, sponsored, or endorsed by Mozilla, and is not affiliated with Mozilla in any way. See the <a href="#disclaimer">disclaimer</a>.</h3>
+<h3 align="center">Vista VPN is developed independently and is not made, owned, sponsored, or endorsed by Mozilla. It has no official affiliation with Mozilla. Please read the <a href="#disclaimer">disclaimer</a>.</h3>
 
 <div align="center">
 
-[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat-square&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
-[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat-square&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
-[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat-square&label=License)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
+[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
+[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat&label=License)](LICENSE)
 
 </div>
 
 ## What is Vista VPN?
 
-**Vista VPN** is a free, open-source VPN that works with a Firefox Account. It carries your internet traffic through Mozilla's servers, on **Fastly**'s infrastructure, over secure **HTTP/1.1, HTTP/2, and HTTP/3** tunnels.
+**Vista VPN** is a free, open-source VPN client for Firefox Accounts. It sends your internet traffic through Mozilla's VPN servers, running on **Fastly** infrastructure, with secure **HTTP/1.1, HTTP/2, and HTTP/3** tunnels.
 
-For **Android, Windows, macOS, and Linux**; completely free, with no ads.
+Available for **Android, Windows, macOS, and Linux** — free to use and without ads.
 
 <p align="center"><a href="https://raw.githubusercontent.com/thisisvista/vista-vpn/main/docs/screenshots/main.webp" target="_blank"><img src="docs/screenshots/main.webp" width="720" alt="Vista VPN"></a></p>
 
-## 🚀 Main features
+## ✨ Features
 
-Cross-platform: Android, Windows, macOS, and Linux
+- **Use it across devices:** available on Android, Windows, macOS, and Linux.
+- **Android TV ready:** navigate the app with your remote control.
+- **Simple by design:** connection and server controls are easy to find.
+- **Monthly data allowance:** 50 GB for each Firefox Account.
+- **Flexible server choice:** compare locations by latency or let the app choose a suitable server.
+- **Modern connection protocols:** supports HTTP/1.1, HTTP/2, and HTTP/3.
+- **Firefox-style TLS:** uses uTLS to begin connections to Mozilla with a Firefox-like TLS fingerprint.
+- **Split tunneling:** select the apps and websites that should connect outside the VPN.
+- **Tools for restricted networks:** TLS fragmentation, an upstream SOCKS5 proxy, and an optional [relay server](docs/relay/README.md).
+- **Move your setup:** back up and restore accounts and settings on another device or server.
+- **Connection settings:** choose IPv4, IPv6, or dual-stack mode, and configure a custom MTU.
+- **Private DNS requests:** encrypted DNS through DNS over HTTPS.
+- **Language options:** 15 languages, including English, Persian, Chinese, and Russian.
+- **Light or dark:** switch between the two available themes.
+- **Open development:** source code is available for review and contributions.
+- **Keep up to date:** automatic update support.
 
-📺 Android TV: works with the remote control
-
-Very easy to use, with a simple interface
-
-🆓 Free: 50 GB a month for every Firefox Account
-
-🌐 Mozilla's servers: choose a country with a ping test, or let the app pick the best server
-
-⚡ Fast, stable connections over HTTP/1.1, HTTP/2, and HTTP/3
-
-🦊 Looks like Firefox: connections to Mozilla start with Firefox's own TLS fingerprint (uTLS)
-
-🔀 Smart routing (split tunneling): choose the sites and apps that skip the VPN
-
-🧱 If your network blocks the connection: TLS fragmentation, upstream SOCKS5 proxy, and a [relay server](docs/relay/README.md)
-
-💾 Backup and import: your accounts and settings in one file, for another device or a server
-
-⚙️ Advanced connection options: IPv4, IPv6, or dual-stack, and a custom MTU
-
-🔒 Encrypted DNS (DNS over HTTPS)
-
-🌍 15 languages, including English, Persian, Chinese, and Russian
-
-🌙 Light and dark themes
-
-🛡 Open source, secure, and community-driven
-
-🔄 Automatic updates
-
-## 📸 Screenshots
+## 🖼️ Screenshots
 
 <p align="center">
 <img src="docs/screenshots/phone_01.webp" width="240" alt="Home">&nbsp;&nbsp;
@@ -71,7 +56,7 @@ Very easy to use, with a simple interface
 <img src="docs/screenshots/phone_03.webp" width="240" alt="Settings">
 </p>
 
-## 📥 Download
+## ⬇️ Downloads
 
 <table>
 <thead>
@@ -87,15 +72,15 @@ Very easy to use, with a simple interface
 </tbody>
 </table>
 
-**Which file should I download?**
+**Not sure which download is right for you?**
 
-- **Android:** if you are not sure, take **Universal**; it installs on every phone. **ARMv8** is for most of today's phones and is smaller.
-- **Windows:** **Setup** is a normal installer; **Portable** needs no install and runs from any folder.
-- **Linux:** **App** for a Linux desktop (with a graphical environment); **Core** for a server (without a graphical environment, with a web panel).
+- **Android:** Universal works on a wide range of devices. ARMv8 is a smaller option for most newer phones.
+- **Windows:** choose Setup for a standard installation, or Portable to run the app without installing it.
+- **Linux:** App is intended for desktop systems with a graphical interface; Core is for servers and includes web-panel access.
 
-## 💻 Install and update on Linux and macOS
+## 🧰 Linux and macOS installation
 
-> Windows and Android users don't need this section: take the installer from the "Download" table above.
+> Windows and Android users can skip this section and use the downloads above.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.sh | bash
@@ -103,16 +88,16 @@ curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.
 
 ### 🌐 Web panel
 
-For Linux servers, Vista VPN has a **web panel** that opens in any browser and has everything the app has: managing accounts and data, choosing a server and testing delay, the connection test, the live log, and every setting.
+On Linux servers, Vista VPN includes a browser-based control panel. Use it to manage accounts and data, select servers, check latency, test the connection, view live logs, and adjust settings.
 
 <p align="center"><img src="docs/screenshots/web.webp" width="720" alt="Web panel"></p>
 
-- **Panel address:** `http://SERVER-IP:10820/app/`, with a username and password. The exact address is shown at the end of the install.
-- **Proxy:** SOCKS5 and HTTP on port `10810`, with a username and password of its own.
+- **Panel address:** `http://SERVER-IP:10820/app/`. Sign in with the username and password configured during installation; the exact address is displayed when setup finishes.
+- **Proxy access:** SOCKS5 and HTTP are available on port `10810`, with separate login details.
 
-### ⌨️ Managing from the terminal
+### 🖥️ Terminal management
 
-On the server, run `sudo vista-vpn` to open the management menu:
+To open the server management menu, run `sudo vista-vpn`:
 
 ```text
 $ sudo vista-vpn
@@ -145,22 +130,22 @@ $ sudo vista-vpn
   Enter a number [0-13]:
 ```
 
-## OpenWrt routers
+## 📡 OpenWrt routers
 
-To install on an OpenWrt router, see the [OpenWrt guide](docs/OPENWRT.md).
+For router setup instructions, follow the [OpenWrt guide](docs/OPENWRT.md).
 
-## Known limitations
+## ⚠️ Known limitations
 
 <details>
-<summary>What Mozilla's servers do not carry</summary>
+<summary>Traffic restrictions on Mozilla's servers</summary>
 
-- **TCP:** ports 80, 443, 8080, and 8443 only. Other ports, such as mail (25, 465, 587, 993) and SSH (22), are refused. Git over SSH to GitHub is the exception: it goes through port 443 by itself.
-- **UDP:** ports 80, 443, 3478, 8080, 8443, and 49152-65534 only. Calls and games on other ports do not go through. Browsers and most apps work normally.
+- **TCP:** only ports 80, 443, 8080, and 8443 are supported. Other ports, including common mail ports (25, 465, 587, 993) and SSH (22), are blocked. Git over SSH to GitHub is an exception because it can use port 443.
+- **UDP:** supported ports are 80, 443, 3478, 8080, 8443, and 49152–65534. Calls and games that rely on other ports may not work, while browsers and many everyday apps should work normally.
 
 </details>
 
 ## Disclaimer
 
-This app is an independent, unofficial client, made and maintained by its own developer. It is not a Mozilla product: Mozilla did not make it, does not own, sponsor, or endorse it, and has no part in its development or support. Questions and problems about the app belong in this repository, not with Mozilla.
+Vista VPN is an independent, unofficial client maintained by its own developer. It is not a Mozilla product, and Mozilla has no role in its creation, ownership, sponsorship, endorsement, development, or support. Please report questions or issues about this app in this repository rather than contacting Mozilla.
 
-You sign in with your own Mozilla account. The account's terms, data limit, and availability are set by Mozilla. Your password and sign-in tokens stay on your device.
+You sign in with your own Mozilla account. Account terms, data limits, and service availability are determined by Mozilla. Your password and sign-in tokens remain on your device.

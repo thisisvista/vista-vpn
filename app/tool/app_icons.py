@@ -234,6 +234,11 @@ def windows(tile_art):
     write_ico(os.path.join(APP, 'windows', 'runner', 'resources', 'app_icon.ico'), tile_art)
 
 
+def linux(tile_art):
+    # Flutter uses this PNG for the Linux window, dock, and desktop launcher.
+    tile_art.save(os.path.join(APP, 'linux', 'runner', 'resources', 'app_icon.png'), optimize=True)
+
+
 def core(tile_art):
     desktop = os.path.join(CORE, 'internal', 'desktop')
     write_ico(os.path.join(desktop, 'appicon.ico'), tile_art)
@@ -331,6 +336,7 @@ def main():
     tv_banner(glyph)
     macos(glyph)
     windows(square)
+    linux(square)
     core(square)
     app_logo(square)
     tray()
