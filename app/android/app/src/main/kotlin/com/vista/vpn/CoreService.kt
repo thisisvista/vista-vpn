@@ -87,9 +87,9 @@ class CoreService : VpnService() {
                 val mtu = mobile.Mobile.tunMTU().takeIf { it > 0 } ?: MTU
                 val config = mobile.Mobile.tunConfig(mtu)
                 if (Tun2Socks.restart(config)) {
-                    Log.w(TAG, "the VPN packet processor is restarting on its protected device")
+                    Log.w(TAG, "the VPN packet processor restart was accepted; native startup is asynchronous")
                 } else {
-                    Log.e(TAG, "the VPN packet processor restart could not be requested; traffic remains blocked")
+                    Log.e(TAG, "the VPN packet processor restart could not be requested; the existing VPN device is being retained")
                 }
             }
             val code = when {
