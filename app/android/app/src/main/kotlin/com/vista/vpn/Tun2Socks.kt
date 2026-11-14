@@ -15,6 +15,7 @@ object Tun2Socks {
     private external fun TProxyStartService(configPath: String, fd: Int): Boolean
     private external fun TProxyStopService(): Boolean
     private external fun TProxyIsRunning(): Boolean
+    private external fun TProxySimulateFailure(): Boolean
 
     @Suppress("unused") // The library binds all four, or none.
     private external fun TProxyGetStats(): LongArray
@@ -73,6 +74,10 @@ object Tun2Socks {
      * True when the VPN device is still held but the native packet processor
      * has ended. JNI keeps draining and discarding packets in this state.
      */
+    /** Test-only: make the native worker exit while retaining the TUN device. */
+    @Synchronized
+    fun simulateFailure(): Boolean = device != null && TProxySimulateFailure()
+
     @Synchronized
     fun ended(): Boolean = device != null && !TProxyIsRunning()
 }
