@@ -53,8 +53,25 @@ object Tun2Socks {
     }
 
     /**
-     * It was started and ended without [stop], which it does only when it
-     * could not start: its configuration, or no memory.
+     * Restarts the packet processor on the existing VPN device. If the
+     * previous native run ended unexpectedly, JNI first stops its TUN
+     * packet dropper, then starts the processor. If this run also fails,
+     * JNI returns to dropping packets instead of releasing the VPN device.
+     */
+    @Synchronized
+    fun restart(configPath: String): Boolean {
+        val tun = device ?: return false
+        return try {
+            TProxyStartService(configPath, tun.fd)
+        } catch (e: Throwable) {
+            android.util.Log.e("Tun2Socks", "the tunnel could not restart", e)
+            false
+        }
+    }
+
+    /**
+     * True when the VPN device is still held but the native packet processor
+     * has ended. JNI keeps draining and discarding packets in this state.
      */
     @Synchronized
     fun ended(): Boolean = device != null && !TProxyIsRunning()
