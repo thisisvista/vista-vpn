@@ -425,6 +425,8 @@ class _DesktopHome extends StatelessWidget {
           child: _PowerOrb(
             palette: p,
             on: on,
+            connected: connected,
+            floating: confirming,
             accent: accent,
             busy: core.switchingProxy,
             tooltip: on ? l.tapToDisconnect : l.tapToConnect,
@@ -1214,6 +1216,8 @@ class _PhoneHome extends StatelessWidget {
                   // A TV starts on the switch, its ring showing.
                   autofocus: Platform.isAndroid && AndroidCore.isTv,
                   on: on,
+                  connected: connected,
+                  floating: confirming,
                   accent: accent,
                   busy: core.switchingProxy,
                   tooltip: press,
@@ -1563,12 +1567,14 @@ class _HomeDelay extends StatelessWidget {
 /// over wavy contour lines. It stays still: an endless animation redraws the
 /// window every frame, and kept a CPU core busy even with the window hidden
 /// in the tray.
-class _PowerOrb extends StatelessWidget {
+class _PowerOrb extends StatefulWidget {
   const _PowerOrb({
     required this.palette,
     this.scale = 1,
     this.autofocus = false,
     required this.on,
+    this.connected = false,
+    this.floating = false,
     required this.accent,
     required this.busy,
     required this.tooltip,
@@ -1581,20 +1587,74 @@ class _PowerOrb extends StatelessWidget {
   final double scale;
   final bool autofocus;
   final bool on;
+  final bool connected;
+
+  /// Float gently only while the connection is being confirmed.
+  final bool floating;
   final Color accent;
   final bool busy;
   final String tooltip;
   final VoidCallback onPressed;
 
   @override
+  State<_PowerOrb> createState() => _PowerOrbState();
+}
+
+class _PowerOrbState extends State<_PowerOrb>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _floatController;
+
+  @override
+  void initState() {
+    super.initState();
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    );
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PowerOrb oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.floating != widget.floating) _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (widget.floating && !reduceMotion) {
+      if (!_floatController.isAnimating) _floatController.repeat();
+    } else if (_floatController.isAnimating) {
+      _floatController.stop();
+      _floatController.value = 0.5;
+    }
+  }
+
+  @override
+  void dispose() {
+    _floatController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final p = palette;
+    final p = widget.palette;
+    final scale = widget.scale;
+    final on = widget.on;
     final area = 250.0 * scale;
     final ring = 186.0 * scale;
     final disc = 148.0 * scale;
     final reach = 70.0 * scale;
+    final markColor = widget.connected
+        ? const Color(0xFF00FFC8)
+        : widget.floating
+            ? const Color(0xFFFFB52E)
+            : !on
+                ? const Color(0xFF8D7AB8)
+                : widget.accent;
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       child: SizedBox.square(
         dimension: area,
         child: Stack(
@@ -1610,7 +1670,7 @@ class _PowerOrb extends StatelessWidget {
               child: IgnorePointer(
                 child: CustomPaint(
                   painter: _Contours(
-                    color: accent,
+                    color: widget.accent,
                     alpha: p.dark ? 0.16 : 0.22,
                   ),
                 ),
@@ -1623,8 +1683,8 @@ class _PowerOrb extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    accent.withValues(alpha: on ? 0.30 : 0.10),
-                    accent.withValues(alpha: 0),
+                    widget.accent.withValues(alpha: on ? 0.30 : 0.10),
+                    widget.accent.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -1635,15 +1695,18 @@ class _PowerOrb extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: accent.withValues(alpha: on ? 0.55 : 0.28),
+                  color: widget.accent.withValues(alpha: on ? 0.55 : 0.28),
                   width: 1.5,
                 ),
               ),
             ),
-            if (busy)
+            if (widget.busy)
               SizedBox.square(
                 dimension: ring,
-                child: CircularProgressIndicator(strokeWidth: 2, color: accent),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: widget.accent,
+                ),
               ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 400),
@@ -1655,7 +1718,10 @@ class _PowerOrb extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: on
-                      ? [Color.lerp(accent, Colors.white, 0.28)!, accent]
+                      ? [
+                          Color.lerp(widget.accent, Colors.white, 0.28)!,
+                          widget.accent,
+                        ]
                       : p.discOff,
                 ),
                 border: Border.all(
@@ -1667,7 +1733,7 @@ class _PowerOrb extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     color: on
-                        ? accent.withValues(alpha: 0.5)
+                        ? widget.accent.withValues(alpha: 0.5)
                         : (p.dark ? Colors.black : const Color(0xFF2A3375))
                               .withValues(alpha: p.dark ? 0.45 : 0.14),
                     blurRadius: on ? 36 : 26,
@@ -1680,12 +1746,30 @@ class _PowerOrb extends StatelessWidget {
                 shape: const CircleBorder(),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  autofocus: autofocus,
-                  onTap: busy ? null : onPressed,
-                  child: Icon(
-                    Icons.power_settings_new_rounded,
-                    size: 58 * scale,
-                    color: on ? Colors.white : (p.dark ? p.muted : p.idle),
+                  autofocus: widget.autofocus,
+                  onTap: widget.busy ? null : widget.onPressed,
+                  child: AnimatedBuilder(
+                    animation: _floatController,
+                    builder: (context, child) {
+                      final phase = _floatController.value * math.pi * 2;
+                      final bob = widget.floating ? math.sin(phase) * 5.0 : 0.0;
+                      final tilt = widget.floating
+                          ? math.sin(phase) * 0.012
+                          : 0.0;
+                      return Transform.translate(
+                        offset: Offset(0, bob),
+                        child: Transform.rotate(angle: tilt, child: child),
+                      );
+                    },
+                    child: Center(
+                      child: Transform.translate(
+                        offset: Offset(0, -7 * scale),
+                        child: VistaCircuitMark(
+                          size: 124 * scale,
+                          color: markColor,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
