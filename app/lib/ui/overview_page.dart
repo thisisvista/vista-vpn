@@ -17,6 +17,7 @@ import '../platform.dart';
 import 'browser_signin.dart';
 import 'connection_mode.dart';
 import 'format.dart';
+import 'experimental_vista_home.dart' show VistaCircuitMark;
 import 'port_dialog.dart';
 import 'widgets.dart';
 
