@@ -371,7 +371,7 @@ jobs:
           cache: true
       - name: Generate Vista desktop and core icons
         run: |
-          python3 -m pip install Pillow
+          python3 -m pip install --break-system-packages Pillow
           cd app && python3 tool/app_icons.py
       # What runs only on macOS: the system proxy, the TUN service and its
       # socket, DNS settings, the core's binding outside the TUN, and the
