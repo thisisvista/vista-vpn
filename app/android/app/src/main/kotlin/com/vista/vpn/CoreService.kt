@@ -78,12 +78,19 @@ class CoreService : VpnService() {
                 turnOff(this@CoreService)
                 return
             }
-            // It could not start: without it the VPN would hold the phone's
-            // traffic and carry none of it.
-            if (Tun2Socks.ended()) {
-                Log.e(TAG, "the VPN's tunnel ended; turning the VPN off")
-                turnOff(this@CoreService)
-                return
+            // If the packet processor exits unexpectedly, JNI keeps the
+            // VPN device open and drains/discards its packets. Retry the
+            // processor on that same device when a physical network is back;
+            // never tear down the VPN route just because the tunnel engine
+            // needs to restart.
+            if (Tun2Socks.ended() && !offline) {
+                val mtu = mobile.Mobile.tunMTU().takeIf { it > 0 } ?: MTU
+                val config = mobile.Mobile.tunConfig(mtu)
+                if (Tun2Socks.restart(config)) {
+                    Log.w(TAG, "the VPN packet processor is restarting on its protected device")
+                } else {
+                    Log.e(TAG, "the VPN packet processor restart could not be requested; traffic remains blocked")
+                }
             }
             val code = when {
                 mobile.Mobile.connectPending() -> ""
