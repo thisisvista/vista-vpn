@@ -1114,11 +1114,9 @@ class _PhoneHome extends StatelessWidget {
     // A wide, low screen (a TV, 960 x 540): a smaller switch and the two
     // cards side by side, so that all of it shows without scrolling.
     final short = box.maxHeight < 560 && width >= 600;
-    // Keep the cards close to the bottom, with a little less inset on phones.
-    // Scale gently with the available height; very short wide screens keep their spacing.
-    final bottomInset = short
-        ? 20.0
-        : (box.maxHeight * 0.018).clamp(10.0, 16.0);
+    // Keep the server and data cards close to the bottom edge on phones.
+    // The previous 10–16 px inset left a visible gap on compact displays.
+    final bottomInset = short ? 16.0 : 2.0;
     // On a tablet the content keeps about a phone's width in the middle (the
     // colors still reach the edges), and the problem boxes their own limit.
     // Both as padding, since IntrinsicHeight measures through padding but
