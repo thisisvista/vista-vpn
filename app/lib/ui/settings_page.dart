@@ -477,6 +477,34 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         if (Platform.isAndroid)
           ValueListenableBuilder(
+            valueListenable: AndroidCore.killSwitch,
+            builder: (context, on, _) => _Row(
+              icon: Icons.shield_outlined,
+              label: 'Kill Switch',
+              child: Switch(
+                value: on,
+                onChanged: (v) => runShowingErrors(
+                  context,
+                  () => AndroidCore.setKillSwitch(v),
+                ),
+              ),
+            ),
+          ),
+        if (Platform.isAndroid)
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                Localizations.localeOf(context).languageCode == 'fa'
+                    ? 'در صورت قطع ناگهانی تونل VPN، ترافیک اینترنت را مسدود می‌کند تا اتصال دوباره برقرار شود.'
+                    : 'Blocks internet traffic if the VPN tunnel unexpectedly stops, until it reconnects.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ),
+        if (Platform.isAndroid)
+          ValueListenableBuilder(
             valueListenable: AndroidCore.showSpeed,
             builder: (context, on, _) => _Row(
               icon: Icons.speed_rounded,
