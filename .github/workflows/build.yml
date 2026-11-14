@@ -268,7 +268,8 @@ jobs:
           cache-dependency-path: core/go.sum
       - name: Generate Vista desktop and core icons
         run: |
-          python3 -m pip install --break-system-packages Pillow
+          python3 -m venv "$RUNNER_TEMP/vista-icon-venv"
+          "$RUNNER_TEMP/vista-icon-venv/bin/python" -m pip install --upgrade pip Pillow
           cd app && python3 tool/app_icons.py
       - name: Build
         run: bash scripts/build-linux-core.sh
@@ -316,7 +317,8 @@ jobs:
           sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev
       - name: Generate Vista desktop and core icons
         run: |
-          python3 -m pip install --break-system-packages Pillow
+          python3 -m venv "$RUNNER_TEMP/vista-icon-venv"
+          "$RUNNER_TEMP/vista-icon-venv/bin/python" -m pip install --upgrade pip Pillow
           cd app && python3 tool/app_icons.py
       # A real TUN, as root, for a minute (internal/tunservice/e2e_test.go):
       # this computer is CI's.
