@@ -48,6 +48,11 @@ class CoreService : VpnService() {
     /** The speed the notification shows (the user's choice); "" for none. */
     private var shownSpeed = ""
 
+    /** Test-only: delay automatic recovery so packet dropping can be inspected. */
+    @Volatile
+    private var testHoldUntil = 0L
+    private var shownTestActive = false
+
     /** Android reported that no network is connected (no Wi-Fi, no mobile data). */
     @Volatile
     private var offline = false
@@ -84,12 +89,16 @@ class CoreService : VpnService() {
             // never tear down the VPN route just because the tunnel engine
             // needs to restart.
             if (Tun2Socks.ended() && !offline) {
-                val mtu = mobile.Mobile.tunMTU().takeIf { it > 0 } ?: MTU
-                val config = mobile.Mobile.tunConfig(mtu)
-                if (Tun2Socks.restart(config)) {
-                    Log.w(TAG, "the VPN packet processor restart was accepted; native startup is asynchronous")
+                if (System.currentTimeMillis() < testHoldUntil) {
+                    Log.w(TAG, "the deliberate Kill Switch test is holding the tunnel in packet-drop mode")
                 } else {
-                    Log.e(TAG, "the VPN packet processor restart could not be requested; the existing VPN device is being retained")
+                    val mtu = mobile.Mobile.tunMTU().takeIf { it > 0 } ?: MTU
+                    val config = mobile.Mobile.tunConfig(mtu)
+                    if (Tun2Socks.restart(config)) {
+                        Log.w(TAG, "the VPN packet processor restart was accepted; native startup is asynchronous")
+                    } else {
+                        Log.e(TAG, "the VPN packet processor restart could not be requested; the existing VPN device is being retained")
+                    }
                 }
             }
             val code = when {
@@ -103,10 +112,12 @@ class CoreService : VpnService() {
             // Proxy mode names the address apps connect to; the VPN needs none.
             val proxy = if (usesVpn(this@CoreService) || !mobile.Mobile.running()) "" else mobile.Mobile.proxyAddress()
             val speed = if (showSpeed(this@CoreService) && !offline && mobile.Mobile.running()) speedText(mobile.Mobile.speed()) else ""
-            if (code != shownCountry || proxy != shownProxy || speed != shownSpeed) {
+            val testActive = System.currentTimeMillis() < testHoldUntil
+            if (code != shownCountry || proxy != shownProxy || speed != shownSpeed || testActive != shownTestActive) {
                 shownCountry = code
                 shownProxy = proxy
                 shownSpeed = speed
+                shownTestActive = testActive
                 getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(code))
             }
             if (on && usesVpn(this@CoreService) && appMode(this@CoreService) == MODE_EXCLUDE) {
@@ -224,6 +235,19 @@ class CoreService : VpnService() {
             turnOff(this)
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_TEST_TUNNEL_FAILURE) {
+            if (on && usesVpn(this) && System.currentTimeMillis() >= testHoldUntil) {
+                testHoldUntil = System.currentTimeMillis() + TEST_HOLD_MS
+                if (Tun2Socks.simulateFailure()) {
+                    Log.w(TAG, "test-only tunnel failure triggered; packet dropping is held for ${TEST_HOLD_MS}ms")
+                    refreshNotification()
+                } else {
+                    testHoldUntil = 0L
+                    Log.e(TAG, "test-only tunnel failure could not be triggered")
+                }
+            }
+            return START_STICKY
+        }
         if (intent?.action == ACTION_RECONNECT) {
             // New settings: the apps left out of the VPN, or the mode.
             if (on) {
@@ -270,6 +294,7 @@ class CoreService : VpnService() {
 
     override fun onDestroy() {
         destroyed = true
+        testHoldUntil = 0L
         main.removeCallbacks(watchCountry)
         // A notification posted at the last moment goes too.
         getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
@@ -417,7 +442,9 @@ class CoreService : VpnService() {
         // proxy address (proxy mode) also while connecting, so the user sees
         // it is the proxy, not the VPN.
         val first = if (shownSpeed.isEmpty()) state else "$state  ·  $shownSpeed"
-        val text = if (shownProxy.isEmpty()) first else "$first\n${getString(R.string.notification_proxy, shownProxy)}"
+        val baseText = if (shownProxy.isEmpty()) first else "$first\n${getString(R.string.notification_proxy, shownProxy)}"
+        val testActive = System.currentTimeMillis() < testHoldUntil
+        val text = if (testActive) "$baseText\nKill Switch test: traffic is being blocked" else baseText
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE,
@@ -441,12 +468,24 @@ class CoreService : VpnService() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .addAction(Notification.Action.Builder(null, getString(R.string.notification_stop), stop).build())
+            .apply {
+                if (usesVpn(this@CoreService) && !testActive) {
+                    val test = PendingIntent.getService(
+                        this@CoreService, 2,
+                        Intent(this@CoreService, CoreService::class.java).setAction(ACTION_TEST_TUNNEL_FAILURE),
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    )
+                    addAction(Notification.Action.Builder(null, "Test Kill Switch (30s)", test).build())
+                }
+            }
             .build()
     }
 
     companion object {
         const val ACTION_STOP = "com.vista.vpn.STOP"
         private const val ACTION_RECONNECT = "com.vista.vpn.RECONNECT"
+        private const val ACTION_TEST_TUNNEL_FAILURE = "com.vista.vpn.TEST_TUNNEL_FAILURE"
+        private const val TEST_HOLD_MS = 30_000L
         private const val PREFS = "vpn"
         private const val MODE = "app_mode"
         const val MODE_EXCLUDE = "exclude"
