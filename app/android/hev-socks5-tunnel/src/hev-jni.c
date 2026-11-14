@@ -58,6 +58,7 @@ static jboolean native_start_service (JNIEnv *env, jobject thiz,
                                       jstring conig_path, jint fd);
 static jboolean native_stop_service (JNIEnv *env, jobject thiz);
 static jboolean native_is_running (JNIEnv *env, jobject thiz);
+static jboolean native_simulate_failure (JNIEnv *env, jobject thiz);
 static jlongArray native_get_stats (JNIEnv *env, jobject thiz);
 
 static JNINativeMethod native_methods[] = {
@@ -65,6 +66,7 @@ static JNINativeMethod native_methods[] = {
       (void *)native_start_service },
     { "TProxyStopService", "()Z", (void *)native_stop_service },
     { "TProxyIsRunning", "()Z", (void *)native_is_running },
+    { "TProxySimulateFailure", "()Z", (void *)native_simulate_failure },
     { "TProxyGetStats", "()[J", (void *)native_get_stats },
 };
 
@@ -245,6 +247,25 @@ native_is_running (JNIEnv *env, jobject thiz)
 {
     return atomic_load_explicit (&is_running, memory_order_acquire) ? JNI_TRUE :
                                                                       JNI_FALSE;
+}
+
+/* Test-only: exit the worker without setting stop_requested, so its
+ * thread handler enters drop_tun_packets() and retains the VPN route. */
+static jboolean
+native_simulate_failure (JNIEnv *env, jobject thiz)
+{
+    jboolean result = JNI_FALSE;
+
+    pthread_mutex_lock (&mutex);
+    if (thread_joinable &&
+        atomic_load_explicit (&is_running, memory_order_acquire) &&
+        !atomic_load_explicit (&stop_requested, memory_order_acquire)) {
+        hev_socks5_tunnel_quit ();
+        result = JNI_TRUE;
+    }
+    pthread_mutex_unlock (&mutex);
+
+    return result;
 }
 
 static jlongArray
