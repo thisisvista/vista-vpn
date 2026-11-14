@@ -48,8 +48,6 @@ class CoreService : VpnService() {
     /** The speed the notification shows (the user's choice); "" for none. */
     private var shownSpeed = ""
 
-    /** Test-only: delay automatic recovery so packet dropping can be inspected. */
-    @Volatile
 
     /** Android reported that no network is connected (no Wi-Fi, no mobile data). */
     @Volatile
