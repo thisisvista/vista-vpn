@@ -130,6 +130,14 @@ jobs:
           cache: true
       - name: Inno Setup
         run: choco upgrade innosetup -y --no-progress
+      # Windows must generate the same Vista icons as Android before Flutter
+      # packages the app; otherwise the checked-in legacy icons ship as-is.
+      - name: Generate branded app icons
+        shell: pwsh
+        run: |
+          python -m pip install Pillow
+          Push-Location app
+          try { python tool/app_icons.py } finally { Pop-Location }
       - name: Build
         shell: pwsh
         env:
