@@ -15,9 +15,9 @@
 
 <div align="center">
 
-[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat-square&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
-[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat-square&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
-[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat-square&label=License)](../../LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/thisisvista/vista-vpn/total?style=flat&logo=github&label=Downloads)](https://github.com/thisisvista/vista-vpn/releases)
+[![Last Version](https://img.shields.io/github/v/release/thisisvista/vista-vpn?style=flat&label=Version)](https://github.com/thisisvista/vista-vpn/releases/latest)
+[![License](https://img.shields.io/github/license/thisisvista/vista-vpn?style=flat&label=License)](../../LICENSE)
 
 </div>
 
@@ -25,41 +25,32 @@
 
 ## &rlm;Vista VPN چیست؟
 
-&rlm;**Vista VPN** یک VPN رایگان و متن‌باز است که با حساب فایرفاکس (Firefox Account) کار می‌کند. اینترنت شما را از سرورهای موزیلا، روی زیرساخت **Fastly**، و با تونل‌های امن **HTTP/2 و HTTP/3** عبور می‌دهد.
+&rlm;**Vista VPN** یک کلاینت VPN مستقل و متن‌باز است که با حساب Firefox کار می‌کند. ترافیک اینترنت از سرورهای VPN موزیلا و زیرساخت **Fastly**، از طریق تونل‌های **HTTP/1.1، HTTP/2 و HTTP/3** عبور می‌کند.
 
 &rlm;برای **اندروید، ویندوز، مک و لینوکس**؛ کاملاً رایگان، بدون تبلیغات.
 
 <p align="center"><a href="https://raw.githubusercontent.com/thisisvista/vista-vpn/main/docs/screenshots/main.webp" target="_blank"><img src="../screenshots/main.webp" width="720" alt="Vista VPN"></a></p>
 
-## 🚀 امکانات اصلی
+## قابلیت‌ها
 
-✈️ چندپلتفرمی: اندروید، ویندوز، مک و لینوکس
+- **چندسکویی:** اندروید، ویندوز، macOS و لینوکس.
+- **پشتیبانی از Android TV:** مناسب برای کار با کنترل تلویزیون.
+- **رابط کاربری ساده:** کنترل‌های اصلی اتصال در دسترس و مرتب هستند.
+- **سهمیه رایگان:** ماهانه ۵۰ گیگابایت برای هر حساب Firefox.
+- **انتخاب سرور:** انتخاب کشور پس از بررسی پینگ یا سپردن انتخاب به Vista.
+- **پروتکل‌های اتصال:** پشتیبانی از HTTP/1.1، HTTP/2 و HTTP/3.
+- **سازگاری TLS با فایرفاکس:** آغاز اتصال به سرورهای موزیلا با اثرانگشت TLS مشابه فایرفاکس از طریق uTLS.
+- **مسیریابی انتخابی:** تعیین سایت‌ها و برنامه‌هایی که از VPN عبور نکنند (Split Tunneling).
+- **شبکه‌های محدود:** فرگمنت TLS، پروکسی SOCKS5 بالادستی و [سرور رله](../relay/README.md).
+- **پشتیبان‌گیری و بازیابی:** خروجی گرفتن از حساب‌ها و تنظیمات برای استفاده در دستگاه یا سرور دیگر.
+- **تنظیمات شبکه:** IPv4، IPv6، حالت دوگانه و MTU سفارشی.
+- **DNS رمزگذاری‌شده:** پشتیبانی از DNS over HTTPS.
+- **چندزبانه:** ۱۵ زبان، از جمله فارسی، انگلیسی، چینی و روسی.
+- **پوسته‌ها:** حالت روشن و تیره.
+- **متن‌باز:** کد پروژه برای بررسی و مشارکت در دسترس است.
+- **به‌روزرسانی:** پشتیبانی از به‌روزرسانی خودکار.
 
-📺 اندروید TV: قابل استفاده با کنترل تلویزیون
-
-⭐ استفاده بسیار آسان با رابط کاربری ساده
-
-&rlm;🆓 رایگان: هر حساب فایرفاکس ماهی ۵۰ گیگابایت
-
-🌐 سرورهای موزیلا: انتخاب کشور با تست پینگ، یا انتخاب خودکار بهترین سرور
-
-⚡ اتصال سریع و پایدار با HTTP/2 و HTTP/3
-
-🔀 مسیریابی هوشمند (Split Tunneling): سایت‌ها و برنامه‌هایی که از VPN عبور نکنند را انتخاب کنید
-
-🧱 اگر شبکه شما اتصال را مسدود کند: فرگمنت TLS، پروکسی SOCKS5 بالادستی و [سرور رله](../relay/README.md)
-
-&rlm;🔒 DNS رمزگذاری‌شده (DNS over HTTPS)
-
-🌍 ۱۵ زبان، از جمله انگلیسی، فارسی، چینی و روسی
-
-🌙 پوسته روشن و تیره
-
-🛡 اپن سورس، کاملا امن و کامیونیتی محور
-
-🔄 آپدیت خودکار
-
-## 📸 تصاویر
+## تصاویر
 
 <p align="center" dir="ltr">
 <img src="../screenshots/phone_01.webp" width="240" alt="Home">&nbsp;&nbsp;
@@ -67,7 +58,7 @@
 <img src="../screenshots/phone_03.webp" width="240" alt="Settings">
 </p>
 
-## 📥 دانلود مستقیم
+## دانلود
 
 <table>
 <thead align="right">
@@ -89,7 +80,7 @@
 - **ویندوز:** **Setup** نصب‌کننده معمولی است؛ **Portable** بدون نصب، از هر پوشه‌ای اجرا می‌شود.
 - **لینوکس:** **App** برای لینوکس دسکتاپ (Desktop، با محیط گرافیکی)؛ **Core** برای سرور (Server، بدون محیط گرافیکی، با پنل تحت وب).
 
-## 💻 نصب و به‌روزرسانی در لینوکس و مک
+## نصب در لینوکس و macOS
 
 > کاربران ویندوز و اندروید به این بخش نیاز ندارند: فایل نصب را از جدول «دانلود مستقیم» بالا بگیرید.
 
@@ -101,7 +92,7 @@ curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.
 
 <div dir="rtl">
 
-### 🌐 پنل تحت وب
+### پنل تحت وب
 
 برای سرورهای لینوکس، Vista VPN یک **پنل تحت وب** دارد که در هر مرورگری باز می‌شود و همه امکانات برنامه را دارد: مدیریت حساب‌ها و حجم، انتخاب سرور و تست تأخیر، تست اتصال، لاگ زنده، و همه تنظیمات.
 
@@ -110,7 +101,7 @@ curl -fsSL https://raw.githubusercontent.com/thisisvista/vista-vpn/main/install.
 - **آدرس پنل:** `http://SERVER-IP:10820/app/`&lrm;، با نام کاربری و رمز. آدرس دقیق در پایان نصب نمایش داده می‌شود.
 - **پروکسی:** SOCKS5 و HTTP روی پورت `10810`، با نام کاربری و رمز جدا.
 
-### ⌨️ مدیریت از ترمینال
+### مدیریت از ترمینال
 
 روی سرور، دستور `sudo vista-vpn` را بزنید تا منوی مدیریت باز شود:
 
