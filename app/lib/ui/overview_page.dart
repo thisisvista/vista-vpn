@@ -1610,7 +1610,7 @@ class _PowerOrbState extends State<_PowerOrb>
     super.initState();
     _floatController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2600),
+      duration: Duration(milliseconds: Platform.isAndroid ? 2200 : 2600),
     );
   }
 
@@ -1749,9 +1749,16 @@ class _PowerOrbState extends State<_PowerOrb>
                     animation: _floatController,
                     builder: (context, child) {
                       final phase = _floatController.value * math.pi * 2;
-                      final bob = widget.floating ? math.sin(phase) * 5.0 : 0.0;
+                      // Android screens need a slightly stronger motion
+                      // to make the floating effect perceptible at phone size.
+                      // Keep the desktop animation unchanged.
+                      final bobAmount = Platform.isAndroid ? 8.5 : 5.0;
+                      final tiltAmount = Platform.isAndroid ? 0.025 : 0.012;
+                      final bob = widget.floating
+                          ? math.sin(phase) * bobAmount
+                          : 0.0;
                       final tilt = widget.floating
-                          ? math.sin(phase) * 0.012
+                          ? math.sin(phase) * tiltAmount
                           : 0.0;
                       return Transform.translate(
                         offset: Offset(0, bob),
