@@ -1611,6 +1611,11 @@ class _PowerOrbState extends State<_PowerOrb>
       vsync: this,
       duration: const Duration(milliseconds: 2600),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _syncAnimation();
   }
 
