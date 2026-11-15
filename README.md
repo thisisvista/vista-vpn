@@ -46,7 +46,7 @@ Available for **Android, Windows, macOS, and Linux** — free to use and without
 - **Language options:** 15 languages, including English, Persian, Chinese, and Russian.
 - **Light or dark:** switch between the two available themes.
 - **Open development:** source code is available for review and contributions.
-- **Keep up to date:** automatic update support.
+- **Kill switch (Android):** helps prevent internet traffic from bypassing the VPN if the VPN connection drops. Enabled by default on fresh installs; Android's system-level Always-on VPN and “Block connections without VPN” provide additional protection if the app is stopped.
 
 ## 🖼️ Screenshots
 
