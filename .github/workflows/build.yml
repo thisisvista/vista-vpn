@@ -70,7 +70,7 @@ jobs:
           # updates without a word.
           v="${{ steps.version.outputs.version }}"
           ahead="$(jq -r --arg v "$v" '($v | split(".") | map(tonumber)) as $app
-            | to_entries[] | select((.value | split(".") | map(tonumber)) > $app) | "\\(.key) \\(.value)"' .github/updates.json | xargs)"
+            | to_entries[] | select((.value | split(".") | map(tonumber)) > $app) | "\(.key) \(.value)"' .github/updates.json | xargs)"
           if [ -n "$ahead" ]; then
             echo "::error::updates.json names versions newer than app/pubspec.yaml ($v): $ahead"
             exit 1
@@ -96,7 +96,7 @@ jobs:
               fi
               seen[$platform]=1
             done
-            selected_systems="$(printf '%s\\n' "${!seen[@]}" | sort)"
+            selected_systems="$(printf '%s\n' "${!seen[@]}" | sort)"
             manifest_systems="$(jq -r --arg v "$v" 'to_entries[] | select(.value == $v) | .key' .github/updates.json | sort)"
             if [ "$selected_systems" != "$manifest_systems" ]; then
               echo "::error::PLATFORMS selects: $(echo "$selected_systems" | paste -sd, -); updates.json assigns tag $v to: $(echo "$manifest_systems" | paste -sd, -). These lists must match exactly."
