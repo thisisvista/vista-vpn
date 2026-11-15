@@ -21,7 +21,7 @@ class AppSettings extends ChangeNotifier {
   /// A language code (`en`, `fa`, `zh`, `ru`), or empty for the system
   /// language.
   String language = '';
-  ThemeMode themeMode = ThemeMode.system;
+  ThemeMode themeMode = ThemeMode.dark;
   CloseAction closeAction = CloseAction.ask;
 
   /// True until the user finished the welcome page.
@@ -184,7 +184,7 @@ class AppSettings extends ChangeNotifier {
           s.language = l;
         }
         s.themeMode =
-            ThemeMode.values.asNameMap()[j['theme']] ?? ThemeMode.system;
+            ThemeMode.values.asNameMap()[j['theme']] ?? ThemeMode.dark;
         s.closeAction =
             CloseAction.values.asNameMap()[j['close']] ?? CloseAction.ask;
         s.firstRun = j['welcome_done'] != true;
