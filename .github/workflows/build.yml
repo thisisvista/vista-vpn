@@ -1,6 +1,7 @@
 # Tests every push and pull request. A tag "v<version>" (the version in
-# app/pubspec.yaml) also builds Windows, macOS, Android, Linux, and the Linux
-# core, and publishes them as a GitHub release, each file twice: under a
+# app/pubspec.yaml) builds only the platforms selected in the required
+# repository variable PLATFORMS (for example, "android" or "android,windows")
+# and publishes their files as a GitHub release, each file twice: under a
 # fixed name, which the README's releases/latest/download links fetch, and
 # with the version in its name (Vista-VPN-1.2.3-Android-arm64-v8a.apk),
 # which the release notes and older installed apps use during the update
@@ -56,6 +57,8 @@ jobs:
       # as it is pushed (app/lib/app_info.dart): the version each system's
       # app offers.
       - name: Update notice
+        env:
+          PLATFORMS: ${{ vars.PLATFORMS }}
         run: |
           jq -e 'type == "object"
             and all(keys[]; IN("android", "linux", "macos", "windows"))
@@ -67,19 +70,39 @@ jobs:
           # updates without a word.
           v="${{ steps.version.outputs.version }}"
           ahead="$(jq -r --arg v "$v" '($v | split(".") | map(tonumber)) as $app
-            | to_entries[] | select((.value | split(".") | map(tonumber)) > $app) | "\(.key) \(.value)"' .github/updates.json | xargs)"
+            | to_entries[] | select((.value | split(".") | map(tonumber)) > $app) | "\\(.key) \\(.value)"' .github/updates.json | xargs)"
           if [ -n "$ahead" ]; then
             echo "::error::updates.json names versions newer than app/pubspec.yaml ($v): $ahead"
             exit 1
           fi
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             v="${GITHUB_REF_NAME#v}"
-            systems="$(jq -r --arg v "$v" 'to_entries[] | select(.value == $v) | .key' .github/updates.json | xargs)"
-            if [ -z "$systems" ]; then
-              echo "::warning::updates.json gives $v to no system: the apps that read it do not offer this release"
-            else
-              echo "updates.json offers $v to: $systems"
+            # A release tag must explicitly select its target platforms.
+            platforms="${PLATFORMS//[[:space:]]/}"
+            if [ -z "$platforms" ]; then
+              echo "::error::Set the repository Actions variable PLATFORMS to the platform(s) for this release (android, windows, macos, linux)."
+              exit 1
             fi
+            IFS=',' read -r -a selected <<< "$platforms"
+            declare -A seen=()
+            for platform in "${selected[@]}"; do
+              case "$platform" in
+                android|windows|macos|linux) ;;
+                *) echo "::error::Invalid PLATFORMS entry: '$platform'. Use android, windows, macos, linux, separated by commas."; exit 1 ;;
+              esac
+              if [[ -n "${seen[$platform]+x}" ]]; then
+                echo "::error::Duplicate platform in PLATFORMS: $platform"
+                exit 1
+              fi
+              seen[$platform]=1
+            done
+            selected_systems="$(printf '%s\\n' "${!seen[@]}" | sort)"
+            manifest_systems="$(jq -r --arg v "$v" 'to_entries[] | select(.value == $v) | .key' .github/updates.json | sort)"
+            if [ "$selected_systems" != "$manifest_systems" ]; then
+              echo "::error::PLATFORMS selects: $(echo "$selected_systems" | paste -sd, -); updates.json assigns tag $v to: $(echo "$manifest_systems" | paste -sd, -). These lists must match exactly."
+              exit 1
+            fi
+            echo "Release $v targets: $(echo "$selected_systems" | paste -sd, -)"
           fi
       - uses: actions/setup-go@v7
         with:
@@ -113,8 +136,9 @@ jobs:
 
   windows:
     needs: test
-    # Built unless the repository variable PLATFORMS (Settings, Secrets and
-    # variables, Actions, Variables) is set and leaves it out, e.g. "linux".
+    # On release tags, PLATFORMS is required and selects exactly which
+    # platform jobs run. Configure it under Settings > Secrets and variables
+    # > Actions > Variables, e.g. "android" or "android,windows".
     if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'fix/windows-iss-files-section' || github.head_ref == 'fix/windows-vista-branding')) || (github.event_name == 'push' && (github.ref == 'refs/heads/fix/windows-iss-files-section' || github.ref == 'refs/heads/fix/windows-vista-branding'))) && (vars.PLATFORMS == '' || contains(vars.PLATFORMS, 'windows'))
     runs-on: windows-latest
     steps:
