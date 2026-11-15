@@ -236,10 +236,18 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
         ),
         child: SafeArea(
           bottom: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: Column(
-              children: [
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: ConstrainedBox(
+                // Fill the viewport when content fits; scroll naturally when it doesn't.
+                constraints: BoxConstraints(
+                  minHeight: math.max(0.0, constraints.maxHeight - 32),
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
                 Row(
                   children: [
                     Container(
@@ -281,13 +289,9 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const Spacer(),
+                const SizedBox(height: 16),
                 SizedBox(
-                  height: 382,
-                  child: Column(
-                    children: [
-                      const Spacer(),
-                      SizedBox(
                         width: 300,
                         height: 260,
                         child: Stack(
@@ -414,10 +418,10 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                               ),
                           ],
                         ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        stateLabel,
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  stateLabel,
                         textAlign: TextAlign.center,
                         style: baseText.headlineSmall?.copyWith(
                           color: on ? accent : foreground,
@@ -490,9 +494,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                ),
+                const Spacer(),
                 ValueListenableBuilder(
                   valueListenable: Updates.available,
                   builder: (context, release, _) {
@@ -664,7 +666,10 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                     ),
                   ),
                 ],
-              ],
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
