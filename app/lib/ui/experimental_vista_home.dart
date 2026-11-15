@@ -283,7 +283,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
-                  height: 342,
+                  height: 382,
                   child: Column(
                     children: [
                       const Spacer(),
