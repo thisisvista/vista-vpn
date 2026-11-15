@@ -887,7 +887,7 @@ class _HomeUpdateBanner extends StatelessWidget {
                       )
                     : const Icon(Icons.download_rounded, size: 17),
                 label: Text(
-                  installing ? l.updateDownloading(release.version) : l.updateNow,
+                  installing ? l.updateDownloading(release.version) : l.download,
                   maxLines: 1,
                 ),
               ),
