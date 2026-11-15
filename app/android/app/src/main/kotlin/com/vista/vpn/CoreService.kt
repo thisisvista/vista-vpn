@@ -474,7 +474,7 @@ class CoreService : VpnService() {
 
         /** Off by default; when enabled, an unexpected tunnel exit keeps the VPN route and drops packets. */
         fun killSwitchEnabled(context: Context): Boolean =
-            prefs(context).getBoolean(KILL_SWITCH, false)
+            prefs(context).getBoolean(KILL_SWITCH, true)
 
         fun setKillSwitchEnabled(context: Context, enabled: Boolean) {
             prefs(context).edit().putBoolean(KILL_SWITCH, enabled).apply()
