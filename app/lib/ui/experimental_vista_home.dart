@@ -493,7 +493,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                     ],
                   ),
                 ),
-                ValueListenableBuilder<Release?>(
+                ValueListenableBuilder(
                   valueListenable: Updates.available,
                   builder: (context, release, _) {
                     if (release == null ||
@@ -503,7 +503,8 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                     return Padding(
                       padding: const EdgeInsets.only(top: 16, bottom: 16),
                       child: _HomeUpdateBanner(
-                        release: release,
+                        version: release.version,
+                        onDownload: () => Updates.update(release),
                         onDismiss: () => setState(
                           () => _dismissedUpdateVersion = release.version,
                         ),
@@ -830,11 +831,13 @@ class _VistaCircuitPainter extends CustomPainter {
 
 class _HomeUpdateBanner extends StatelessWidget {
   const _HomeUpdateBanner({
-    required this.release,
+    required this.version,
+    required this.onDownload,
     required this.onDismiss,
   });
 
-  final Release release;
+  final String version;
+  final VoidCallback onDownload;
   final VoidCallback onDismiss;
 
   @override
@@ -859,8 +862,8 @@ class _HomeUpdateBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   Updates.failure.value == null
-                      ? l.updateAvailable(release.version)
-                      : l.updateFailed(release.version),
+                      ? l.updateAvailable(version)
+                      : l.updateFailed(version),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     height: 1.35,
@@ -869,7 +872,7 @@ class _HomeUpdateBanner extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
-                onPressed: installing ? null : () => Updates.update(release),
+                onPressed: installing ? null : onDownload,
                 style: FilledButton.styleFrom(
                   backgroundColor: accent,
                   foregroundColor: const Color(0xFF06231F),
@@ -887,7 +890,7 @@ class _HomeUpdateBanner extends StatelessWidget {
                       )
                     : const Icon(Icons.download_rounded, size: 17),
                 label: Text(
-                  installing ? l.updateDownloading(release.version) : l.download,
+                  installing ? l.updateDownloading(version) : l.download,
                   maxLines: 1,
                 ),
               ),
