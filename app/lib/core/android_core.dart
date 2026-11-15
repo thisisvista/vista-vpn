@@ -167,7 +167,7 @@ class AndroidCore {
   static Future<void> loadMode() async {
     mode.value = await _channel.invokeMethod<String>('connectionMode') ?? 'vpn';
     showSpeed.value = await _channel.invokeMethod<bool>('showSpeed') ?? false;
-    killSwitch.value = await _channel.invokeMethod<bool>('killSwitchEnabled') ?? false;
+    killSwitch.value = await _channel.invokeMethod<bool>('killSwitchEnabled') ?? true;
     isTv = await _channel.invokeMethod<bool>('isTv') ?? false;
   }
 
@@ -178,8 +178,8 @@ class AndroidCore {
   /// Whether the notification shows the speed (CoreService.kt reads it).
   static final showSpeed = ValueNotifier<bool>(false);
 
-  /// Kill Switch is opt-in and defaults to off on fresh installs.
-  static final killSwitch = ValueNotifier<bool>(false);
+  /// Kill Switch defaults to on for new installs; the user's choice persists.
+  static final killSwitch = ValueNotifier<bool>(true);
 
   static Future<void> setKillSwitch(bool on) async {
     await _channel.invokeMethod<void>('setKillSwitchEnabled', {'on': on});
