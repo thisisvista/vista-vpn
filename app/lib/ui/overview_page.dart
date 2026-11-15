@@ -2148,6 +2148,7 @@ class _UpdateNotice extends StatelessWidget {
       Updates.available,
       Updates.failure,
       Updates.resultSeen,
+      settings,
     ]),
     builder: (context, _) {
       final l = AppLocalizations.of(context);
