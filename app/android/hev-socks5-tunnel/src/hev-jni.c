@@ -17,6 +17,9 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <errno.h>
+#include <poll.h>
+#include <unistd.h>
 
 #include "hev-main.h"
 
@@ -44,6 +47,7 @@ struct _ThreadData
 };
 
 static atomic_int is_running;
+static atomic_int stop_requested;
 static int thread_joinable;
 static JavaVM *java_vm;
 static pthread_t work_thread;
@@ -97,6 +101,47 @@ JNI_OnLoad (JavaVM *vm, void *reserved)
     return JNI_VERSION_1_4;
 }
 
+/*
+ * If the packet processor exits unexpectedly, keep consuming packets from
+ * Android's TUN device and discard them. The VPN interface therefore remains
+ * the default route, but no packet can fall through to the phone's physical
+ * network while the tunnel is unavailable.
+ *
+ * The fd is borrowed from ParcelFileDescriptor and remains open until
+ * native_stop_service has joined this thread.
+ */
+static void
+drop_tun_packets (int fd)
+{
+    struct pollfd pfd = { .fd = fd, .events = POLLIN };
+    unsigned char packet[65536];
+
+    while (!atomic_load_explicit (&stop_requested, memory_order_acquire)) {
+        int res = poll (&pfd, 1, 250);
+
+        if (res < 0) {
+            if (errno == EINTR)
+                continue;
+            break;
+        }
+        if (!res)
+            continue;
+
+        if (pfd.revents & POLLIN) {
+            ssize_t n = read (fd, packet, sizeof (packet));
+            if (n < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
+                continue;
+            if (n <= 0)
+                break;
+            /* Deliberately discard the packet. */
+            continue;
+        }
+
+        if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+            break;
+    }
+}
+
 static void *
 thread_handler (void *data)
 {
@@ -105,6 +150,13 @@ thread_handler (void *data)
     hev_socks5_tunnel_main (tdata->path, tdata->fd);
 
     atomic_store_explicit (&is_running, 0, memory_order_release);
+
+    /*
+     * A normal stop sets stop_requested before asking the tunnel to quit.
+     * Any other exit is treated as a failure and enters the packet dropper.
+     */
+    if (!atomic_load_explicit (&stop_requested, memory_order_acquire))
+        drop_tun_packets (tdata->fd);
 
     free (tdata->path);
     free (tdata);
@@ -126,9 +178,12 @@ native_start_service (JNIEnv *env, jobject thiz, jstring config_path, jint fd)
         goto exit;
 
     if (thread_joinable) {
+        atomic_store_explicit (&stop_requested, 1, memory_order_release);
         pthread_join (work_thread, NULL);
         thread_joinable = 0;
     }
+
+    atomic_store_explicit (&stop_requested, 0, memory_order_release);
 
     tdata = malloc (sizeof (ThreadData));
     if (!tdata)
@@ -173,6 +228,7 @@ native_stop_service (JNIEnv *env, jobject thiz)
     if (!thread_joinable)
         goto exit;
 
+    atomic_store_explicit (&stop_requested, 1, memory_order_release);
     if (atomic_load_explicit (&is_running, memory_order_acquire))
         hev_socks5_tunnel_quit ();
     res = pthread_join (work_thread, NULL);

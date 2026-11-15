@@ -74,6 +74,7 @@ class SettingsPage extends StatefulWidget {
 /// The groups of settings, each on its own page.
 enum SettingsSection {
   general,
+  network,
   connection,
   relay,
   upstreamProxy,
@@ -105,6 +106,11 @@ List<(String, List<SettingsEntry>)> settingsGroups(
       if (tun) (SettingsSection.tun, Icons.vpn_lock_rounded, l.sectionTun),
     ],
   ),
+  if (Platform.isAndroid)
+    (
+      l.localeName.startsWith('fa') ? 'شبکه' : 'Network',
+      [(SettingsSection.network, Icons.shield_outlined, 'Kill Switch')],
+    ),
   (
     l.sectionBypass,
     [
@@ -400,6 +406,8 @@ class _SettingsPageState extends State<SettingsPage> {
             if (!fixed) const SizedBox(height: 16),
             if (open == SettingsSection.general)
               _general(l, s)
+            else if (open == SettingsSection.network)
+              _network(l)
             else if (_config == null)
               const LinearProgressIndicator()
             else
@@ -427,6 +435,41 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
   }
+
+  Widget _network(AppLocalizations l) => Panel(
+    title: l.localeName.startsWith('fa') ? 'شبکه' : 'Network',
+    icon: Icons.shield_outlined,
+    child: Column(
+      children: [
+        ValueListenableBuilder(
+          valueListenable: AndroidCore.killSwitch,
+          builder: (context, on, _) => _Row(
+            icon: Icons.shield_outlined,
+            label: 'Kill Switch',
+            child: Switch(
+              value: on,
+              onChanged: (v) => runShowingErrors(
+                context,
+                () => AndroidCore.setKillSwitch(v),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              l.localeName.startsWith('fa')
+                  ? 'در صورت قطع ناگهانی تونل VPN، ترافیک اینترنت را مسدود می‌کند تا اتصال دوباره برقرار شود.'
+                  : 'Blocks internet traffic if the VPN tunnel unexpectedly stops, until it reconnects.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _general(AppLocalizations l, AppSettings s) => Panel(
     title: l.sectionGeneral,

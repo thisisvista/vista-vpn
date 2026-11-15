@@ -39,7 +39,7 @@ void main() {
     final s = await AppSettings.load(dir.path);
     expect(s.language, '');
     expect(s.locale, isNull);
-    expect(s.themeMode, ThemeMode.system);
+    expect(s.themeMode, ThemeMode.dark);
     expect(s.closeAction, CloseAction.ask);
     expect(s.signInMethod, SignInMethod.api);
     expect(s.firstRun, isTrue);
@@ -101,7 +101,7 @@ void main() {
         .writeAsStringSync('{"language": "xx", "theme": "neon", "close": 7}');
     final s = await AppSettings.load(dir.path);
     expect(s.language, '');
-    expect(s.themeMode, ThemeMode.system);
+    expect(s.themeMode, ThemeMode.dark);
     expect(s.closeAction, CloseAction.ask);
     expect(s.signInMethod, SignInMethod.api);
   });

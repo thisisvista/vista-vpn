@@ -226,6 +226,12 @@ class _SettingsList extends StatelessWidget {
           tile(Icons.people_outline_rounded, l.navAccounts, onOpenAccounts),
         ]),
         group(l.groupNetwork, [
+          if (Platform.isAndroid)
+            section(
+              SettingsSection.network,
+              Icons.shield_outlined,
+              'Kill Switch',
+            ),
           section(
             SettingsSection.connection,
             Icons.vpn_lock_outlined,

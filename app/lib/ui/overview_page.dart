@@ -1114,8 +1114,8 @@ class _PhoneHome extends StatelessWidget {
     // A wide, low screen (a TV, 960 x 540): a smaller switch and the two
     // cards side by side, so that all of it shows without scrolling.
     final short = box.maxHeight < 560 && width >= 600;
-    // Keep the cards close to the bottom, with a little less inset on phones.
-    // Scale gently with the available height; very short wide screens keep their spacing.
+    // Preserve the normal bottom breathing room; card spacing is controlled
+    // separately below so the cards sit farther from the connection status.
     final bottomInset = short
         ? 20.0
         : (box.maxHeight * 0.018).clamp(10.0, 16.0);
@@ -1390,6 +1390,9 @@ class _PhoneHome extends StatelessWidget {
                 connected: connected,
                 palette: p,
               ),
+              // Give the server and usage cards a clearly visible break
+              // after the connection state and its hints on phone layouts.
+              SizedBox(height: short ? 28 : 52),
               if (short)
                 IntrinsicHeight(
                   child: Row(

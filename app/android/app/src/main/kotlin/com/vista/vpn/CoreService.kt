@@ -48,6 +48,7 @@ class CoreService : VpnService() {
     /** The speed the notification shows (the user's choice); "" for none. */
     private var shownSpeed = ""
 
+
     /** Android reported that no network is connected (no Wi-Fi, no mobile data). */
     @Volatile
     private var offline = false
@@ -78,12 +79,24 @@ class CoreService : VpnService() {
                 turnOff(this@CoreService)
                 return
             }
-            // It could not start: without it the VPN would hold the phone's
-            // traffic and carry none of it.
-            if (Tun2Socks.ended()) {
-                Log.e(TAG, "the VPN's tunnel ended; turning the VPN off")
-                turnOff(this@CoreService)
-                return
+            // If the packet processor exits unexpectedly, JNI keeps the
+            // VPN device open and drains/discards its packets. Retry the
+            // processor on that same device when a physical network is back;
+            // never tear down the VPN route just because the tunnel engine
+            // needs to restart.
+            if (Tun2Socks.ended() && !offline) {
+                if (!killSwitchEnabled(this@CoreService)) {
+                    Log.e(TAG, "the VPN packet processor ended and Kill Switch is off; turning the VPN off")
+                    turnOff(this@CoreService)
+                    return
+                }
+                val mtu = mobile.Mobile.tunMTU().takeIf { it > 0 } ?: MTU
+                val config = mobile.Mobile.tunConfig(mtu)
+                if (Tun2Socks.restart(config)) {
+                    Log.w(TAG, "Kill Switch is holding the VPN route while the packet processor restarts")
+                } else {
+                    Log.e(TAG, "the packet processor restart could not be requested; Kill Switch continues dropping packets")
+                }
             }
             val code = when {
                 mobile.Mobile.connectPending() -> ""
@@ -410,7 +423,8 @@ class CoreService : VpnService() {
         // proxy address (proxy mode) also while connecting, so the user sees
         // it is the proxy, not the VPN.
         val first = if (shownSpeed.isEmpty()) state else "$state  ·  $shownSpeed"
-        val text = if (shownProxy.isEmpty()) first else "$first\n${getString(R.string.notification_proxy, shownProxy)}"
+        val baseText = if (shownProxy.isEmpty()) first else "$first\n${getString(R.string.notification_proxy, shownProxy)}"
+        val text = baseText
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE,
@@ -456,6 +470,15 @@ class CoreService : VpnService() {
         private const val NO_NETWORK = "-"
 
         private const val SHOW_SPEED = "show_speed"
+        private const val KILL_SWITCH = "kill_switch"
+
+        /** Off by default; when enabled, an unexpected tunnel exit keeps the VPN route and drops packets. */
+        fun killSwitchEnabled(context: Context): Boolean =
+            prefs(context).getBoolean(KILL_SWITCH, true)
+
+        fun setKillSwitchEnabled(context: Context, enabled: Boolean) {
+            prefs(context).edit().putBoolean(KILL_SWITCH, enabled).apply()
+        }
 
         /** Whether the notification shows the speed (off unless chosen). */
         fun showSpeed(context: Context) = prefs(context).getBoolean(SHOW_SPEED, false)
