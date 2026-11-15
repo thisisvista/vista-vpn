@@ -507,7 +507,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           bash scripts/release-notes.sh "$GITHUB_REF_NAME" > notes.md
-          gh release create "$GITHUB_REF_NAME" release/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Vista VPN ${{ needs.test.outputs.version }}" \
-            --notes-file notes.md
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # A release created from GitHub's mobile/web UI already exists:
+            # add the CI-built assets to it instead of failing on duplicate creation.
+            gh release upload "$GITHUB_REF_NAME" release/* \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Vista VPN ${{ needs.test.outputs.version }}" \
+              --notes-file notes.md
+          fi
