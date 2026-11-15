@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../core/core_controller.dart';
 import '../core/models.dart';
+import '../core/updates.dart';
 import '../l10n/app_localizations.dart';
 import 'format.dart';
 import 'widgets.dart';
@@ -32,6 +33,7 @@ class ExperimentalVistaHome extends StatefulWidget {
 class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     with SingleTickerProviderStateMixin {
   Timer? _clock;
+  String? _dismissedUpdateVersion;
   late final AnimationController _floatController;
 
   @override
@@ -491,7 +493,24 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                ValueListenableBuilder<Release?>(
+                  valueListenable: Updates.available,
+                  builder: (context, release, _) {
+                    if (release == null ||
+                        _dismissedUpdateVersion == release.version) {
+                      return const SizedBox(height: 16);
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 16),
+                      child: _HomeUpdateBanner(
+                        release: release,
+                        onDismiss: () => setState(
+                          () => _dismissedUpdateVersion = release.version,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 _ActionCard(
                   onTap: widget.onOpenServers,
                   child: Row(
@@ -808,3 +827,82 @@ class _VistaCircuitPainter extends CustomPainter {
   bool shouldRepaint(covariant _VistaCircuitPainter oldDelegate) =>
       oldDelegate.color != color;
 }
+
+class _HomeUpdateBanner extends StatelessWidget {
+  const _HomeUpdateBanner({
+    required this.release,
+    required this.onDismiss,
+  });
+
+  final Release release;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    const accent = Color(0xFF00DDB5);
+    final theme = Theme.of(context);
+    return ValueListenableBuilder<bool>(
+      valueListenable: Updates.installingApk,
+      builder: (context, installing, _) => Material(
+        color: theme.colorScheme.surface.withValues(alpha: 0.96),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: accent.withValues(alpha: 0.65)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              const Icon(Icons.system_update_alt_rounded, color: accent, size: 25),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  Updates.failure.value == null
+                      ? l.updateAvailable(release.version)
+                      : l.updateFailed(release.version),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: installing ? null : () => Updates.update(release),
+                style: FilledButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: const Color(0xFF06231F),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                icon: installing
+                    ? const SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_rounded, size: 17),
+                label: Text(
+                  installing ? l.updateDownloading(release.version) : l.updateNow,
+                  maxLines: 1,
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: l.dismiss,
+                onPressed: onDismiss,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close_rounded, size: 19),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
