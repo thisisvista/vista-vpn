@@ -2173,6 +2173,12 @@ class _UpdateNotice extends StatelessWidget {
       final VoidCallback? dismiss = release.mandatory
           ? null
           : () => settings.update(dismissedUpdate: release.version);
+      Future<void> downloadAndDismiss() async {
+        await openDownload(context, release);
+        if (context.mounted && !release.mandatory) {
+          settings.update(dismissedUpdate: release.version);
+        }
+      }
       if (update == null) {
         return _UpdateBanner(
           palette: palette,
@@ -2186,7 +2192,7 @@ class _UpdateNotice extends StatelessWidget {
               : (
                   label: l.download,
                   icon: Icons.download_rounded,
-                  onPressed: () => openDownload(context, release),
+                  onPressed: downloadAndDismiss,
                 ),
           onClose: dismiss,
         );
@@ -2231,9 +2237,13 @@ class _UpdateNotice extends StatelessWidget {
             ? l.updateReady(release.version)
             : l.updateAvailable(release.version),
         action: (
-          label: l.updateNow,
-          icon: Icons.system_update_alt_rounded,
-          onPressed: () => Updates.update(release),
+          label: Platform.isAndroid ? l.download : l.updateNow,
+          icon: Platform.isAndroid
+              ? Icons.download_rounded
+              : Icons.system_update_alt_rounded,
+          onPressed: Platform.isAndroid
+              ? downloadAndDismiss
+              : () => Updates.update(release),
         ),
         onClose: dismiss,
       );
@@ -2263,9 +2273,6 @@ class _UpdateBanner extends StatelessWidget {
   final String tooltip;
   final bool problem;
   final ({String label, IconData icon, VoidCallback onPressed})? action;
-
-  /// A bar under the text: the download's [progress], or under way
-  /// (null).
   final bool busy;
   final double? progress;
   final VoidCallback? onClose;
@@ -2288,82 +2295,65 @@ class _UpdateBanner extends StatelessWidget {
         child: Padding(
           padding: EdgeInsetsDirectional.fromSTEB(
             14,
-            6,
+            8,
             onClose == null ? 14 : 6,
-            6,
+            8,
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // The notice with its button is one place to choose: a
-              // remote's down arrow from the switch reaches it (the button
-              // alone stands aside, out of the arrow's line), and OK runs
-              // the button's action; right goes on to close.
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: InkWell(
-                  onTap: action?.onPressed,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Row(
-                    children: [
-                      Icon(icon, color: color),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Tooltip(
-                                message: tooltip,
-                                child: Text(
-                                  text,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: p.text,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              if (busy) ...[
-                                const SizedBox(height: 8),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: progress,
-                                    minHeight: 4,
-                                    color: color,
-                                    backgroundColor: color.withValues(
-                                      alpha: 0.2,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Tooltip(
+                      message: tooltip,
+                      child: Text(
+                        text,
+                        softWrap: true,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: p.text,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (action != null) ...[
-                        const SizedBox(width: 8),
-                        // Solid, in the banner's color: the one thing to
-                        // press (focus goes to the whole notice).
-                        ExcludeFocus(
-                          child: FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: color,
-                              foregroundColor: Colors.white,
-                              visualDensity: VisualDensity.compact,
-                              // From the theme, for its font (Vazirmatn in
-                              // Persian): a bare style would replace it.
-                              textStyle: theme.textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            onPressed: action.onPressed,
-                            icon: Icon(action.icon, size: 18),
-                            label: Text(action.label),
-                          ),
+                    ),
+                    if (busy) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 4,
+                          color: color,
+                          backgroundColor: color.withValues(alpha: 0.2),
                         ),
-                      ],
+                      ),
                     ],
-                  ),
+                    if (action != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: color,
+                            foregroundColor: Colors.white,
+                            visualDensity: VisualDensity.compact,
+                            textStyle: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          onPressed: action.onPressed,
+                          icon: Icon(action.icon, size: 18),
+                          label: Text(action.label),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (onClose != null)
