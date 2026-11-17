@@ -250,6 +250,7 @@ func TestAutomaticRelayDisabledMetadataIsAuthoritative(t *testing.T) {
 	f.urls = []string{f.relay("/good")}
 	f.pool.manifestURLs = append(f.pool.manifestURLs, f.server.URL+"/mirror")
 	req, _ := http.NewRequest(http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	req.Header.Set("Authorization", "Bearer fixture")
 	resp, err := f.pool.recover(req)
 	if resp != nil || err == nil || len(f.requests) != 1 {
 		t.Fatalf("disabled pool used: %v %v %v", resp, err, f.requests)
@@ -458,8 +459,12 @@ type automaticRelayDeadlineCapture struct {
 }
 
 func (t automaticRelayDeadlineCapture) RoundTrip(req *http.Request) (*http.Response, error) {
-	if deadline, ok := req.Context().Deadline(); ok {
-		t.remaining.CompareAndSwap(0, int64(time.Until(deadline)))
+	// Ignore the health probe's shorter client timeout; capture only the
+	// authenticated Guardian request whose context carries the pool budget.
+	if req.URL.Query().Get("health") != "1" && req.Header.Get("Authorization") != "" {
+		if deadline, ok := req.Context().Deadline(); ok {
+			t.remaining.CompareAndSwap(0, int64(time.Until(deadline)))
+		}
 	}
 	return t.base.RoundTrip(req)
 }
