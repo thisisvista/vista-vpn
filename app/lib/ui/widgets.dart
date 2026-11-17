@@ -40,7 +40,7 @@ class AppLogo extends StatelessWidget {
 
 /// Status colors that read in both themes.
 abstract final class StatusColors {
-  static const good = Color(0xFF22A06B);
+  static const good = Color(0xFF29A883);
   static const busy = Color(0xFFE2A400);
   static const bad = Color(0xFFE5484D);
   static const idle = Color(0xFF8B8D98);
@@ -145,7 +145,7 @@ String locationName(AppLocalizations l, String code, String name) =>
 abstract final class Midnight {
   static const top = Color(0xFF141B3D);
   static const bottom = Color(0xFF070A18);
-  static const connected = Color(0xFF10D9A0);
+  static const connected = Color(0xFF29A883);
   static const busy = Color(0xFFFFB547);
   static const error = Color(0xFFFF5C7A);
   static const idle = Color(0xFF7C83FF);
