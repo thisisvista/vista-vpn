@@ -19,6 +19,7 @@
 // ?secret=SECRET. Required: without one the relay relays nothing (the
 // sign-in and the account tokens cross it).
 $SECRET = '';
+$MAX_REQUEST_BODY = 1048576; // 1 MiB; Guardian payloads are small.
 
 $ALLOWED = [
     'mozilla.org', 'mozilla.com', 'firefox.com', // accounts, Guardian, server list
@@ -27,7 +28,8 @@ $ALLOWED = [
 
 // Headers that describe this hop, not the request or the response.
 $HOP = ['host', 'connection', 'keep-alive', 'content-length', 'transfer-encoding', 'accept-encoding',
-    'x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-real-ip', 'upgrade', 'te', 'trailer'];
+    'x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-real-ip', 'upgrade', 'te', 'trailer',
+    'proxy-authenticate', 'proxy-authorization', 'proxy-connection', 'forwarded', 'true-client-ip'];
 
 function fail($status, $why)
 {
@@ -114,12 +116,25 @@ if ($probe) {
 if ($browser) {
     page('works');
 }
+$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+if (!in_array($method, ['GET', 'HEAD', 'POST'], true)) {
+    header('Allow: GET, HEAD, POST');
+    fail(405, 'method not allowed');
+}
 $target = (string)($_GET['url'] ?? '');
+if (strlen($target) > 8192) {
+    fail(400, 'target URL is too long');
+}
 $parts = parse_url($target);
-if (!$parts || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])) {
-    fail(400, 'url must be an https URL');
+if (!$parts || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host']) ||
+    isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment']) ||
+    (isset($parts['port']) && $parts['port'] !== 443)) {
+    fail(400, 'target must be an HTTPS URL without credentials, a fragment or a non-HTTPS port');
 }
 $host = strtolower($parts['host']);
+if (!preg_match('/^[a-z0-9.-]+$/D', $host) || substr($host, -1) === '.') {
+    fail(400, 'invalid target host');
+}
 $allowed = false;
 foreach ($ALLOWED as $domain) {
     if ($host === $domain || ends_with($host, '.' . $domain)) {
@@ -139,7 +154,22 @@ foreach (getallheaders() as $name => $value) {
     $headers[] = $name . ': ' . $value;
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
+$body = '';
+if ($method === 'POST') {
+    $declaredLength = $_SERVER['CONTENT_LENGTH'] ?? '';
+    if ($declaredLength !== '' && (!ctype_digit((string)$declaredLength) || (int)$declaredLength > $MAX_REQUEST_BODY)) {
+        fail(413, 'request body exceeds 1 MiB');
+    }
+    $input = fopen('php://input', 'rb');
+    if ($input === false) {
+        fail(400, 'could not read request body');
+    }
+    $body = stream_get_contents($input, $MAX_REQUEST_BODY + 1);
+    fclose($input);
+    if ($body === false || strlen($body) > $MAX_REQUEST_BODY) {
+        fail(413, 'request body exceeds 1 MiB');
+    }
+}
 $ch = curl_init($target);
 curl_setopt_array($ch, [
     CURLOPT_CUSTOMREQUEST => $method,
@@ -169,8 +199,8 @@ curl_setopt_array($ch, [
         return strlen($data);
     },
 ]);
-if ($method !== 'GET' && $method !== 'HEAD') {
-    curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents('php://input'));
+if ($method === 'POST') {
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
 }
 if ($method === 'HEAD') {
     curl_setopt($ch, CURLOPT_NOBODY, true);
