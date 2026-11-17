@@ -638,117 +638,126 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                       child: Material(
                         color: card,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(13),
                           side: BorderSide(color: border),
                         ),
                         clipBehavior: Clip.antiAlias,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _HomeRoutingOption(
-                              title: 'All apps',
-                              subtitle: 'All of the phone traffic goes through the VPN',
-                              selected: _connectionMode == 'vpn' && _appRoutingMode == 'all',
-                              onTap: () => _selectHomeMode('all'),
-                              muted: muted,
-                              foreground: foreground,
-                            ),
-                            Divider(height: 1, indent: 14, endIndent: 14, color: border),
-                            _HomeRoutingOption(
-                              title: 'Selected apps',
-                              subtitle: _selectedAppCount == 0
-                                  ? 'Choose which apps use the VPN'
-                                  : '$_selectedAppCount apps selected',
-                              selected: _connectionMode == 'vpn' && _appRoutingMode == 'include',
-                              onTap: () => _selectHomeMode('include'),
-                              muted: muted,
-                              foreground: foreground,
-                              trailing: Text(
-                                '$_selectedAppCount',
-                                style: baseText.labelMedium?.copyWith(color: muted),
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  _HomeModeChip(
+                                    title: 'All Apps',
+                                    selected: _connectionMode == 'vpn' && _appRoutingMode == 'all',
+                                    onTap: () => _selectHomeMode('all'),
+                                    foreground: foreground,
+                                    muted: muted,
+                                  ),
+                                  _HomeModeChip(
+                                    title: 'Selected Apps',
+                                    selected: _connectionMode == 'vpn' && _appRoutingMode == 'include',
+                                    onTap: () => _selectHomeMode('include'),
+                                    foreground: foreground,
+                                    muted: muted,
+                                  ),
+                                  _HomeModeChip(
+                                    title: 'Proxy',
+                                    selected: _connectionMode == 'proxy',
+                                    onTap: () => _selectHomeMode('proxy'),
+                                    foreground: foreground,
+                                    muted: muted,
+                                  ),
+                                ],
                               ),
-                            ),
-                            if (_connectionMode == 'vpn' && _appRoutingMode == 'include')
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(12, 0, 12, 9),
-                                child: Material(
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.045)
-                                      : const Color(0xFFF1F4F8),
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(10),
-                                    onTap: _openPerAppProxy,
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.apps_rounded, size: 17, color: muted),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              'Per-app proxy',
-                                              style: baseText.bodySmall?.copyWith(
-                                                color: foreground,
-                                                fontWeight: FontWeight.w600,
+                              if (_connectionMode == 'vpn' && _appRoutingMode == 'include')
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: Material(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.045)
+                                        : const Color(0xFFF1F4F8),
+                                    borderRadius: BorderRadius.circular(9),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(9),
+                                      onTap: _openPerAppProxy,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.apps_rounded, size: 15, color: muted),
+                                            const SizedBox(width: 7),
+                                            Expanded(
+                                              child: Text(
+                                                'Per-app proxy',
+                                                style: baseText.labelMedium?.copyWith(
+                                                  color: foreground,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          Icon(Icons.chevron_right_rounded, size: 18, color: muted),
-                                        ],
+                                            Text(
+                                              '$_selectedAppCount selected',
+                                              style: baseText.labelSmall?.copyWith(color: muted),
+                                            ),
+                                            const SizedBox(width: 3),
+                                            Icon(Icons.chevron_right_rounded, size: 17, color: muted),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            Divider(height: 1, indent: 14, endIndent: 14, color: border),
-                            _HomeRoutingOption(
-                              title: 'Proxy',
-                              subtitle: _connectionMode == 'proxy' ? 'Local proxy mode' : 'Use the local proxy port',
-                              selected: _connectionMode == 'proxy',
-                              onTap: () => _selectHomeMode('proxy'),
-                              muted: muted,
-                              foreground: foreground,
-                            ),
-                            if (_connectionMode == 'proxy')
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                                child: Material(
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.045)
-                                      : const Color(0xFFF1F4F8),
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(10),
-                                    onTap: _changeHomeProxyPort,
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.settings_ethernet_rounded, size: 17, color: muted),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              'Proxy port  $_proxyPort',
-                                              style: baseText.bodySmall?.copyWith(
-                                                color: foreground,
-                                                fontWeight: FontWeight.w600,
+                              if (_connectionMode == 'proxy')
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: Material(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.045)
+                                        : const Color(0xFFF1F4F8),
+                                    borderRadius: BorderRadius.circular(9),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(9),
+                                      onTap: _changeHomeProxyPort,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.settings_ethernet_rounded, size: 15, color: muted),
+                                            const SizedBox(width: 7),
+                                            Expanded(
+                                              child: Text(
+                                                'Proxy port',
+                                                style: baseText.labelMedium?.copyWith(
+                                                  color: foreground,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          Icon(Icons.edit_rounded, size: 16, color: muted),
-                                        ],
+                                            Text(
+                                              '$_proxyPort',
+                                              style: baseText.labelMedium?.copyWith(
+                                                color: foreground,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Icon(Icons.edit_rounded, size: 14, color: muted),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 11),
+                  const SizedBox(height: 9),
                 ],
                 _ActionCard(
                   onTap: widget.onOpenServers,
@@ -903,6 +912,58 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                   ),
                 ],
                     ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class _HomeModeChip extends StatelessWidget {
+  const _HomeModeChip({
+    required this.title,
+    required this.selected,
+    required this.onTap,
+    required this.foreground,
+    required this.muted,
+  });
+
+  final String title;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color foreground;
+  final Color muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: selected
+              ? const Color(0xFF28BA89).withValues(alpha: dark ? 0.19 : 0.13)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: SizedBox(
+              height: 32,
+              child: Center(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: selected ? const Color(0xFF28BA89) : muted,
+                    fontSize: 11,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),
