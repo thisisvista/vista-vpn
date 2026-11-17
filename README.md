@@ -39,7 +39,7 @@ Available for **Android, Windows, macOS, and Linux** — free to use and without
 - **Modern connection protocols:** supports HTTP/1.1, HTTP/2, and HTTP/3.
 - **Firefox-style TLS:** uses uTLS to begin connections to Mozilla with a Firefox-like TLS fingerprint.
 - **Split tunneling:** select the apps and websites that should connect outside the VPN.
-- **Tools for restricted networks:** TLS fragmentation, an upstream SOCKS5 proxy, and an optional [relay server](docs/relay/README.md).
+- 🛠️ **Tools for restricted networks:** TLS fragmentation, an upstream SOCKS5 proxy, and an optional [relay server](docs/relay/README.md).
 - **Move your setup:** back up and restore accounts and settings on another device or server.
 - **Connection settings:** choose IPv4, IPv6, or dual-stack mode, and configure a custom MTU.
 - **Private DNS requests:** encrypted DNS through DNS over HTTPS.
