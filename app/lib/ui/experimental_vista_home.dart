@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app_settings.dart';
 import '../core/android_core.dart';
 import '../core/core_controller.dart';
 import '../core/models.dart';
@@ -18,12 +19,14 @@ class ExperimentalVistaHome extends StatefulWidget {
   const ExperimentalVistaHome({
     super.key,
     required this.core,
+    required this.settings,
     required this.onOpenServers,
     required this.onOpenAccounts,
     required this.onOpenSettings,
   });
 
   final CoreController core;
+  final AppSettings settings;
   final VoidCallback onOpenServers;
   final VoidCallback onOpenAccounts;
   final VoidCallback onOpenSettings;
@@ -560,10 +563,10 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                     );
                   },
                 ),
-                if (Platform.isAndroid) ...[
+                if (Platform.isAndroid && widget.settings.showAppRouting) ...[
                   Center(
                     child: FractionallySizedBox(
-                      widthFactor: 0.92,
+                      widthFactor: 0.86,
                       child: _ActionCard(
                         onTap: widget.onOpenSettings,
                     child: Row(
