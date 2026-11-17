@@ -29,8 +29,6 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
   List<InstalledApp>? _apps;
   AppRouting? _routing;
 
-  /// The choice when the page opened, to know whether to apply it.
-  String _initial = '';
   String _query = '';
   final Map<String, Future<Uint8List?>> _icons = {};
 
@@ -46,7 +44,6 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
     if (!mounted) return;
     setState(() {
       _routing = routing;
-      _initial = routing.key;
       _apps = apps;
       _sort();
     });
@@ -62,7 +59,8 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
     });
   }
 
-  void _save() => AndroidCore.setAppRouting(_routing!, apply: false);
+  /// Apply every app-list change immediately to the active VPN interface.
+  void _save() => AndroidCore.setAppRouting(_routing!, apply: true);
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +78,7 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
           a,
     ];
     return PopScope(
-      onPopInvokedWithResult: (didPop, _) {
-        // Applied once: the VPN is set up again with the new choice.
-        if (didPop && routing != null && routing.key != _initial) {
-          AndroidCore.setAppRouting(routing, apply: true);
-        }
-      },
+      onPopInvokedWithResult: (didPop, _) {},
       child: Scaffold(
         appBar: AppBar(
           title: Text(l.bypassApps),
