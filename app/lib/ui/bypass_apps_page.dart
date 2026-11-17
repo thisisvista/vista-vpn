@@ -122,7 +122,6 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                               if (value == null) return;
                               setState(() {
                                 routing.allApps = value == 'all';
-                                routing.onlyChosen = false;
                                 _sort();
                               });
                               _save();
