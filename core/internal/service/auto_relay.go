@@ -106,10 +106,12 @@ func boundedRelayTLS(d *echDialer, wait time.Duration) func(context.Context, str
 // size and candidate count. No URL with a relay secret is logged.
 func (a *automaticRelays) load(ctx context.Context) {
 	if time.Now().Before(a.refreshAt) {
+		logx.Info("automatic Guardian relay manifest cache in use candidates=%d", len(a.urls))
 		return
 	}
 	a.refreshAt = time.Now().Add(time.Minute)
-	for _, source := range a.manifestURLs {
+	logx.Info("automatic Guardian relay manifest fetch started sources=%d", len(a.manifestURLs))
+	for sourceIndex, source := range a.manifestURLs {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
 		if err != nil {
 			continue
@@ -117,11 +119,13 @@ func (a *automaticRelays) load(ctx context.Context) {
 		req.Header.Set("Accept", "application/json")
 		resp, err := a.client.Do(req)
 		if err != nil {
+			logx.Warn("automatic Guardian relay manifest request failed source=%d err=%s", sourceIndex+1, logx.Err(err))
 			continue
 		}
 		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxRelayManifest+1))
 		resp.Body.Close()
 		if readErr != nil || resp.StatusCode != http.StatusOK || len(body) > maxRelayManifest {
+			logx.Warn("automatic Guardian relay manifest rejected source=%d http=%d read_error=%t oversized=%t", sourceIndex+1, resp.StatusCode, readErr != nil, len(body) > maxRelayManifest)
 			continue
 		}
 		var manifest struct {
@@ -132,11 +136,13 @@ func (a *automaticRelays) load(ctx context.Context) {
 		}
 		var root map[string]json.RawMessage
 		if json.Unmarshal(body, &root) != nil || root == nil || json.Unmarshal(body, &manifest) != nil {
+			logx.Warn("automatic Guardian relay manifest invalid source=%d", sourceIndex+1)
 			continue
 		}
 		var candidates []string
 		seen := map[string]bool{}
-		if manifest.Relays != nil && manifest.Relays.Enabled {
+		enabled := manifest.Relays != nil && manifest.Relays.Enabled
+		if enabled {
 			for _, raw := range manifest.Relays.URLs {
 				u, err := url.Parse(strings.TrimSpace(raw))
 				if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
@@ -167,11 +173,15 @@ func (a *automaticRelays) load(ctx context.Context) {
 			a.active = ""
 			a.activeUntil = time.Time{}
 		}
-		logx.Info("automatic Guardian relay list loaded candidates=%d", len(candidates))
+		logx.Info("automatic Guardian relay manifest loaded enabled=%t candidates=%d", enabled, len(candidates))
+		if enabled && len(candidates) == 0 {
+			logx.Warn("automatic Guardian relay is enabled in the manifest but has no valid HTTPS candidates")
+		}
 		return
 	}
 	// A failed refresh does not invent another metadata source or erase a
 	// previously fetched list. The next 451 retries the refresh after a minute.
+	logx.Warn("automatic Guardian relay manifest unavailable; retaining cached candidates=%d", len(a.urls))
 }
 
 func (a *automaticRelays) healthy(ctx context.Context, relay *url.URL, base http.RoundTripper) bool {
@@ -198,7 +208,7 @@ func (a *automaticRelays) healthy(ctx context.Context, relay *url.URL, base http
 		if errors.Is(err, context.Canceled) {
 			why = "cancelled"
 		}
-		logx.Info("automatic relay health failed host=%s reason=%s", relay.Hostname(), why)
+		logx.Info("automatic relay health failed host=%s reason=%s err=%s", relay.Hostname(), why, logx.Err(err))
 		return false
 	}
 	defer resp.Body.Close()
@@ -220,6 +230,7 @@ func (a *automaticRelays) recover(req *http.Request) (*http.Response, error) {
 		(req.Body != nil && req.GetBody == nil) {
 		return nil, nil
 	}
+	logx.Info("automatic Guardian relay recovery started method=%s path=%s", req.Method, req.URL.EscapedPath())
 	ctx, cancel := context.WithTimeout(req.Context(), autoRelayBudget)
 	handedOff := false
 	defer func() {
@@ -242,6 +253,11 @@ func (a *automaticRelays) recover(req *http.Request) (*http.Response, error) {
 		a.networkKey = network
 	}
 	order := append([]string(nil), a.urls...)
+	if len(order) == 0 {
+		logx.Warn("automatic Guardian relay recovery has no configured candidates")
+		return nil, errors.New("no configured Guardian relay candidates")
+	}
+	logx.Info("automatic Guardian relay candidates available=%d", len(order))
 	a.shuffle(len(order), func(i, j int) { order[i], order[j] = order[j], order[i] })
 	if a.active != "" && time.Now().Before(a.activeUntil) {
 		order = append([]string{a.active}, order...)
@@ -251,15 +267,21 @@ func (a *automaticRelays) recover(req *http.Request) (*http.Response, error) {
 		if ctx.Err() != nil {
 			break
 		}
-		if seen[raw] || time.Now().Before(a.badUntil[raw]) {
+		if seen[raw] {
+			continue
+		}
+		if time.Now().Before(a.badUntil[raw]) {
+			logx.Info("automatic Guardian relay candidate skipped during cooldown host=%s", relayHost(raw))
 			continue
 		}
 		seen[raw] = true
 		u, _ := url.Parse(raw)
 		base, err := a.transport(u)
 		if err != nil {
+			logx.Warn("automatic Guardian relay transport setup failed host=%s err=%s", u.Hostname(), logx.Err(err))
 			continue
 		}
+		logx.Info("automatic Guardian relay health check started host=%s", u.Hostname())
 		closeIdle, _ := base.(interface{ CloseIdleConnections() })
 		if closeIdle != nil {
 			defer closeIdle.CloseIdleConnections()
@@ -279,7 +301,7 @@ func (a *automaticRelays) recover(req *http.Request) (*http.Response, error) {
 		if resp != nil {
 			logx.Info("automatic relay Guardian response host=%s http=%d forwarded=%t", u.Hostname(), resp.StatusCode, resp.Header.Get("X-Vista-Relay") == "1")
 		} else if err != nil {
-			logx.Info("automatic relay Guardian request failed host=%s", u.Hostname())
+			logx.Warn("automatic relay Guardian request failed host=%s err=%s", u.Hostname(), logx.Err(err))
 		}
 		if err == nil && usableGuardianRelayResponse(req, resp) {
 			// RoundTrip's body still uses ctx. Keep its deadline alive until
@@ -288,10 +310,11 @@ func (a *automaticRelays) recover(req *http.Request) (*http.Response, error) {
 			handedOff = true
 			a.active, a.activeUntil = raw, time.Now().Add(relayFirstFor)
 			resp.Request = req
-			logx.Info("Guardian HTTP 451 recovered through a healthy automatic relay")
+			logx.Info("automatic Guardian relay used successfully host=%s", u.Hostname())
 			return resp, nil
 		}
 		if resp != nil {
+			logx.Warn("automatic Guardian relay response rejected host=%s http=%d forwarded=%t", u.Hostname(), resp.StatusCode, resp.Header.Get("X-Vista-Relay") == "1")
 			resp.Body.Close()
 		}
 		a.badUntil[raw] = time.Now().Add(time.Minute)
@@ -300,7 +323,16 @@ func (a *automaticRelays) recover(req *http.Request) (*http.Response, error) {
 			break
 		}
 	}
+	logx.Warn("automatic Guardian relay recovery exhausted candidates=%d", len(seen))
 	return nil, errors.New("no healthy Guardian relay is available")
+}
+
+func relayHost(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "<invalid>"
+	}
+	return u.Hostname()
 }
 
 func usableGuardianRelayResponse(req *http.Request, resp *http.Response) bool {

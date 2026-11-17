@@ -82,18 +82,25 @@ func configureAPIRelay(n config.Network) error {
 	// An enabled personal relay takes precedence. Turning it off must not
 	// disable the independently configured shared Guardian-only fallback.
 	guardian.SetRegionRecovery(nil)
-	if n.SharedRelayInUse() &&
-		(controlplane.UsesDefaultTransport() || controlplane.Transport() == apiRelayTransport) {
+	sharedRelayEligible := controlplane.UsesDefaultTransport() || controlplane.Transport() == apiRelayTransport
+	switch {
+	case !n.SharedRelayInUse():
+		logx.Info("shared Guardian relay pool disabled")
+	case !sharedRelayEligible:
+		logx.Warn("shared Guardian relay pool enabled in settings but not installed reason=custom_control_plane_transport")
+	default:
 		pool := newAutomaticRelays(n)
 		guardian.SetRegionRecovery(func(req *http.Request) (*http.Response, error) {
 			// A custom route may be installed after daemon configuration.
 			// Only the default transport or this function's personal-relay
 			// wrapper may fall through to the shared pool.
 			if !controlplane.UsesDefaultTransport() && controlplane.Transport() != apiRelayTransport {
+				logx.Warn("shared Guardian relay recovery skipped reason=custom_control_plane_transport")
 				return nil, nil
 			}
 			return pool.recover(req)
 		})
+		logx.Info("shared Guardian relay pool enabled; waiting for an eligible Guardian fallback request")
 	}
 	if raw == "" {
 		// Only a relay this function set is taken away: another transport
