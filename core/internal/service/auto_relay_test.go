@@ -370,3 +370,83 @@ func TestAutomaticRelayUsesTheLocalUpdateServerManifest(t *testing.T) {
 		t.Fatal("local release server did not supply the relay manifest")
 	}
 }
+
+
+func TestAutomaticRelaySkipsBadWorkerUntilCooldownExpires(t *testing.T) {
+	f := newRelayPoolFixture(t)
+	dead, good := f.relay("/dead"), f.relay("/good")
+	f.urls = []string{dead, good}
+	f.health["/dead"] = http.StatusServiceUnavailable
+
+	resp := f.recover()
+	resp.Body.Close()
+	if until := f.pool.badUntil[dead]; !time.Now().Before(until) {
+		t.Fatal("failed worker was not placed in cooldown")
+	}
+
+	// A worker that failed recently must be skipped even if it recovers early.
+	f.health["/dead"] = http.StatusOK
+	f.pool.active = ""
+	before := len(f.requests)
+	resp = f.recover()
+	resp.Body.Close()
+	for _, request := range f.requests[before:] {
+		if request == "/dead?health=1" {
+			t.Fatal("worker was probed again before its cooldown expired")
+		}
+	}
+
+	// Once the cooldown expires, the worker becomes eligible again.
+	f.pool.active = ""
+	f.pool.badUntil[dead] = time.Now().Add(-time.Second)
+	before = len(f.requests)
+	resp = f.recover()
+	resp.Body.Close()
+	found := false
+	for _, request := range f.requests[before:] {
+		if request == "/dead?health=1" {
+			found = true
+			break
+		}
+	}
+	if !found || f.pool.active != dead {
+		t.Fatalf("worker did not re-enter rotation after cooldown: requests=%v active=%q", f.requests[before:], f.pool.active)
+	}
+}
+
+func TestAutomaticRelayHonorsCallerDeadlineDuringHealthProbe(t *testing.T) {
+	f := newRelayPoolFixture(t)
+	var probes atomic.Int32
+	slow := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("health") == "1" {
+			probes.Add(1)
+			<-r.Context().Done()
+			return
+		}
+		w.Header().Set("X-Vista-Relay", "1")
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"token":"unexpected"}`)
+	}))
+	defer slow.Close()
+
+	f.urls = []string{slow.URL + "/slow?secret=fixture"}
+	f.pool.transport = func(*url.URL) (http.RoundTripper, error) {
+		return slow.Client().Transport, nil
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+
+	started := time.Now()
+	resp, err := f.pool.recover(req)
+	elapsed := time.Since(started)
+	if resp != nil || err == nil {
+		t.Fatalf("expected bounded recovery failure, response=%v error=%v", resp, err)
+	}
+	if probes.Load() != 1 {
+		t.Fatalf("expected exactly one health probe, got %d", probes.Load())
+	}
+	if elapsed > time.Second {
+		t.Fatalf("recovery ignored the caller deadline: took %s", elapsed)
+	}
+}
