@@ -149,7 +149,9 @@ const (
 // relayFallback sends each control-plane request directly, and through the
 // user's relay when that cannot work: no connection to the server within
 // directWait (nothing was sent, so nothing is sent twice), or Mozilla
-// refusing the region (HTTP 451). After such a request the next ones go
+// refusing the region (HTTP 451). If both routes receive 451, it preserves
+// that definitive refusal for Guardian's doubled-path and shared-pool recovery.
+// After such a request the next ones go
 // through the relay first for relayFirstFor, or until the network changes,
 // so only the first waits; then directly again. A relay that cannot be
 // reached falls back to the direct way the same way. So a relay set by
