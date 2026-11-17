@@ -122,7 +122,7 @@ background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent)}
 </style>
 <div class="card"><div class="brand"><span class="dot"></span>Vista VPN relay</div>
 <span class="badge">${s.badge}</span><h1>${s.title}</h1><p>${s.text}</p>${path}</div></html>`;
-  return new Response(html, { status: s.status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  return new Response(html, { status: s.status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
 // A local response proves that the worker currently accepts requests;
