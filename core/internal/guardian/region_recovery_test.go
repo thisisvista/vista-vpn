@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/thisisvista/vista-vpn/core/internal/controlplane"
 )
