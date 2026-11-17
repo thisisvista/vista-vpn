@@ -105,7 +105,7 @@ func TestSharedRelayIsDisabledByDefault(t *testing.T) {
 	}
 }
 
-func TestPersonalAndSharedRelaySelectionAreIndependent(t *testing.T) {
+func TestPersonalAndSharedRelayCanFormFallbackChain(t *testing.T) {
 	for _, tc := range []struct {
 		name                     string
 		personal, shared         bool
@@ -115,7 +115,7 @@ func TestPersonalAndSharedRelaySelectionAreIndependent(t *testing.T) {
 		{"shared without personal address", false, true, "", false, true},
 		{"disabled personal retains address", false, true, "https://personal.example/", false, true},
 		{"empty personal does not block shared", true, true, "", false, true},
-		{"enabled personal takes priority", true, true, "https://personal.example/", true, false},
+		{"shared follows enabled personal", true, true, "https://personal.example/", true, true},
 		{"shared off keeps personal", true, false, "https://personal.example/", true, false},
 		{"both off", false, false, "https://personal.example/", false, false},
 	} {
