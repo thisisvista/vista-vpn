@@ -21,6 +21,14 @@ import (
 	"github.com/thisisvista/vista-vpn/core/internal/guardian"
 )
 
+type automaticRelayFixtureRoundTripper struct {
+	roundTrip func(*http.Request) (*http.Response, error)
+}
+
+func (f *automaticRelayFixtureRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f.roundTrip(req)
+}
+
 func TestAutomaticRelayKeepsCustomControlPlaneIsolated(t *testing.T) {
 	for _, before := range []bool{true, false} {
 		t.Run(map[bool]string{true: "fixture-before-config", false: "fixture-after-config"}[before], func(t *testing.T) {
@@ -61,6 +69,73 @@ func TestAutomaticRelayKeepsCustomControlPlaneIsolated(t *testing.T) {
 				t.Fatal("a custom control-plane response escaped into automatic relay discovery")
 			}
 		})
+	}
+}
+
+// The shared Guardian pool remains available as a last resort when a
+// personal relay is configured. A custom transport is eligible only when it
+// is the personal-relay transport installed by configureAPIRelay.
+func TestAutomaticRelayCanFollowPersonalRelay(t *testing.T) {
+	previous, previousRelay := controlplane.Transport(), apiRelayTransport
+	t.Cleanup(func() {
+		guardian.SetRegionRecovery(nil)
+		controlplane.SetTransport(previous)
+		apiRelayTransport = previousRelay
+	})
+	controlplane.SetTransport(nil)
+	apiRelayTransport = nil
+
+	var metadataRequests atomic.Int32
+	metadata := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		metadataRequests.Add(1)
+		io.WriteString(w, `{"relays":{"enabled":false,"urls":[]}}`)
+	}))
+	defer metadata.Close()
+	t.Setenv("VISTA_VPN_UPDATE_SERVER", metadata.URL)
+
+	if err := configureAPIRelay(config.Network{
+		APIRelay:          "https://personal.example/?secret=fixture",
+		APIRelayEnabled:   true,
+		SharedRelayEnabled: true,
+		APIRelayECH:       config.RelayECHOff,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var directHits, personalHits atomic.Int32
+	directTransport := &automaticRelayFixtureRoundTripper{roundTrip: func(req *http.Request) (*http.Response, error) {
+		directHits.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusUnavailableForLegalReasons,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{"error":"direct refusal"}`)),
+			Request:    req,
+		}, nil
+	}}
+	personal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		personalHits.Add(1)
+		w.WriteHeader(http.StatusUnavailableForLegalReasons)
+	}))
+	defer personal.Close()
+	personalURL, _ := url.Parse(personal.URL + "/?secret=fixture")
+	fallback := &relayFallback{
+		direct: directTransport,
+		relay:  &relayTransport{relay: personalURL, base: personal.Client().Transport},
+	}
+	apiRelayTransport = fallback
+	controlplane.SetTransport(fallback)
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	_, err := guardian.FetchUserInfo(ctx, guardian.DefaultEndpoint, "fixture")
+	if !errors.Is(err, guardian.ErrRegionUnavailable) {
+		t.Fatalf("fixture refusal changed: %v", err)
+	}
+	if directHits.Load() < 2 || personalHits.Load() < 2 {
+		t.Fatalf("expected direct and personal attempts for original and doubled paths, got direct=%d personal=%d", directHits.Load(), personalHits.Load())
+	}
+	if metadataRequests.Load() == 0 {
+		t.Fatal("shared relay discovery was not attempted after direct and personal routes returned 451")
 	}
 }
 

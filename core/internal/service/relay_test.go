@@ -222,6 +222,61 @@ func TestRelayFallbackUsesTheRelayForTheRegion(t *testing.T) {
 	}
 }
 
+// If both direct and personal routes receive a definitive HTTP 451,
+// preserve that response so Guardian can continue to the shared pool.
+func TestRelayFallbackPreserves451AfterPersonalRelayAlsoRefuses(t *testing.T) {
+	mozilla := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnavailableForLegalReasons)
+	}))
+	defer mozilla.Close()
+	personal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnavailableForLegalReasons)
+	}))
+	defer personal.Close()
+	base, _ := url.Parse(personal.URL + "/?secret=fixture")
+	fb := &relayFallback{
+		direct: mozilla.Client().Transport,
+		relay:  &relayTransport{relay: base, base: personal.Client().Transport},
+	}
+	req, _ := http.NewRequest(http.MethodGet, mozilla.URL+"/api/v1/fpn/token", nil)
+	resp, err := fb.RoundTrip(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusUnavailableForLegalReasons {
+		t.Fatalf("the final 451 must reach Guardian recovery: response=%v error=%v", resp, err)
+	}
+	resp.Body.Close()
+}
+
+// A personal relay that disconnects after accepting a POST is ambiguous.
+// Do not disguise that failure as the direct route's earlier HTTP 451.
+func TestRelayFallbackDoesNotHideAmbiguousPersonalRelayFailure(t *testing.T) {
+	mozilla := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnavailableForLegalReasons)
+	}))
+	defer mozilla.Close()
+	var relayHits atomic.Int32
+	personal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		relayHits.Add(1)
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err == nil {
+			conn.Close()
+		}
+	}))
+	defer personal.Close()
+	base, _ := url.Parse(personal.URL + "/?secret=fixture")
+	fb := &relayFallback{
+		direct: mozilla.Client().Transport,
+		relay:  &relayTransport{relay: base, base: personal.Client().Transport},
+	}
+	req, _ := http.NewRequest(http.MethodPost, mozilla.URL+"/api/v1/fpn/activate", strings.NewReader("activation"))
+	resp, err := fb.RoundTrip(req)
+	if err == nil || resp != nil {
+		t.Fatalf("an ambiguous POST failure must remain an error: response=%v error=%v", resp, err)
+	}
+	if relayHits.Load() != 1 {
+		t.Fatalf("personal relay hits = %d, want 1", relayHits.Load())
+	}
+}
+
 // A request that reached Mozilla and then failed is not sent again
 // through the relay: it may have been done.
 func TestRelayFallbackDoesNotSendTwice(t *testing.T) {
