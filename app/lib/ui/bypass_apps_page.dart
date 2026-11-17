@@ -159,7 +159,8 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          if (!routing.onlyChosen &&
+                          if (!routing.allApps &&
+                              !routing.onlyChosen &&
                               routing.suggested.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Align(
@@ -184,15 +185,16 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                             ),
                           ],
                           const SizedBox(height: 12),
-                          TextField(
-                            decoration: InputDecoration(
-                              isDense: true,
-                              prefixIcon: const Icon(Icons.search_rounded),
-                              hintText: l.search,
-                              border: const OutlineInputBorder(),
+                          if (!routing.allApps)
+                            TextField(
+                              decoration: InputDecoration(
+                                isDense: true,
+                                prefixIcon: const Icon(Icons.search_rounded),
+                                hintText: l.search,
+                                border: const OutlineInputBorder(),
+                              ),
+                              onChanged: (v) => setState(() => _query = v),
                             ),
-                            onChanged: (v) => setState(() => _query = v),
-                          ),
                         ],
                       ),
                     );
