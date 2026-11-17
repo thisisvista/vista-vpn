@@ -24,7 +24,6 @@ class AppRouting {
     this.allApps = false,
     required this.bypass,
     required this.only,
-    required this.suggested,
     Set<String>? declined,
   }) : declined = declined ?? {};
 
@@ -39,37 +38,6 @@ class AppRouting {
 
   /// Proxy selected apps: only these use the VPN.
   final Set<String> only;
-
-  /// The routing region's apps (from the core), suggested for bypassing:
-  /// the installed ones are checked by themselves (CoreService.suggest),
-  /// unless the user unchecked them ([declined]).
-  final Set<String> suggested;
-
-  /// The suggested apps the user unchecked: never checked again by
-  /// themselves, only by the user or "Suggested apps".
-  final Set<String> declined;
-
-  Set<String> get _chosen => allApps ? <String>{} : onlyChosen ? only : bypass;
-
-  /// Whether [package] is checked in the current mode.
-  bool checked(String package) => _chosen.contains(package);
-
-  void toggle(String package, bool on) {
-    on ? _chosen.add(package) : _chosen.remove(package);
-    if (!onlyChosen && suggested.contains(package)) {
-      on ? declined.remove(package) : declined.add(package);
-    }
-  }
-
-  /// Checks the suggested apps that are installed, also those unchecked
-  /// before; returns how many were not checked yet.
-  int checkSuggested(Iterable<String> installed) {
-    final mine = installed.where(suggested.contains).toSet();
-    declined.removeAll(mine);
-    final add = mine..removeAll(bypass);
-    bypass.addAll(add);
-    return add.length;
-  }
 
   /// A key that changes with the choice, to know whether to apply it.
   String get key => [
@@ -280,7 +248,6 @@ class AndroidCore {
       allApps: mode == 'all',
       bypass: set('bypass'),
       only: set('only'),
-      suggested: set('region'),
       declined: set('declined'),
     );
   }
