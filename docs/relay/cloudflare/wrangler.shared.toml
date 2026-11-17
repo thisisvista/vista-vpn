@@ -19,5 +19,5 @@ name = "IP_LIMITER"
 namespace_id = "9402"
 
   [ratelimits.simple]
-  limit = 600
+  limit = 3000
   period = 60
