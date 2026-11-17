@@ -9,9 +9,7 @@ void main() {
         allApps: true,
         bypass: {'com.example.bypass'},
         only: {'com.example.only'},
-        suggested: {'com.example.bypass'},
       );
-
       expect(routing.checked('com.example.bypass'), isFalse);
       expect(routing.checked('com.example.only'), isFalse);
       expect(routing.bypass, contains('com.example.bypass'));
@@ -24,14 +22,11 @@ void main() {
         allApps: true,
         bypass: {'com.example.bypass'},
         only: {'com.example.only'},
-        suggested: const {},
       );
-
       routing.allApps = false;
       routing.onlyChosen = true;
       expect(routing.checked('com.example.only'), isTrue);
       expect(routing.checked('com.example.bypass'), isFalse);
-
       routing.onlyChosen = false;
       expect(routing.checked('com.example.bypass'), isTrue);
       expect(routing.checked('com.example.only'), isFalse);
@@ -40,13 +35,10 @@ void main() {
     test('All apps mode is represented in the routing key', () {
       final routing = AppRouting(
         onlyChosen: false,
-        allApps: false,
         bypass: {'com.example.bypass'},
         only: {'com.example.only'},
-        suggested: const {},
       );
       final excludeKey = routing.key;
-
       routing.allApps = true;
       expect(routing.key, isNot(excludeKey));
     });
@@ -57,11 +49,8 @@ void main() {
         allApps: true,
         bypass: {'com.example.bypass'},
         only: {'com.example.only'},
-        suggested: const {},
       );
-
       routing.toggle('com.example.new', true);
-
       expect(routing.bypass, {'com.example.bypass'});
       expect(routing.only, {'com.example.only'});
     });
