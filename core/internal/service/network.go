@@ -57,9 +57,10 @@ func configureDNS(cfg config.DNS) error {
 	return nil
 }
 
-// configureAPIRelay sends the control-plane requests through the user's
-// relay at n.APIRelay when they cannot go directly (relayFallback). Shared
-// Guardian recovery has its own switch. Only the Firefox Accounts, Guardian,
+// configureAPIRelay sends control-plane requests directly first and through
+// the user's relay at n.APIRelay when needed (relayFallback). If both routes
+// fail, the optional shared Guardian pool can recover eligible requests. Only
+// the Firefox Accounts, Guardian,
 // server-list, geo-file, and flag requests are affected; the VPN traffic
 // keeps talking to Mozilla's proxy directly. n.APIRelayECH hides the
 // relay's name with Encrypted Client Hello (echDialer).
@@ -86,8 +87,9 @@ func configureAPIRelay(n config.Network) error {
 		pool := newAutomaticRelays(n)
 		guardian.SetRegionRecovery(func(req *http.Request) (*http.Response, error) {
 			// A custom route may be installed after daemon configuration.
-			// Its responses must never escape through an automatic relay.
-			if !controlplane.UsesDefaultTransport() {
+			// Only the default transport or this function's personal-relay
+			// wrapper may fall through to the shared pool.
+			if !controlplane.UsesDefaultTransport() && controlplane.Transport() != apiRelayTransport {
 				return nil, nil
 			}
 			return pool.recover(req)
@@ -173,15 +175,38 @@ func (t *relayFallback) RoundTrip(req *http.Request) (*http.Response, error) {
 	if first == t.direct {
 		t.useRelay(why)
 	}
-	retry, _, retryErr := t.try(second, req)
-	if first == t.relay && retryErr == nil {
+	retry, retryWhy, retryErr := t.try(second, req)
+	if first == t.relay && retryWhy == "" && retryErr == nil {
 		// The relay failed, Mozilla answered: directly from now on.
 		t.mu.Lock()
 		t.relayUntil = time.Time{}
 		t.mu.Unlock()
 	}
+	if retryWhy == "HTTP 451" && retry != nil {
+		// Both routes have received a definitive region refusal. Preserve the
+		// response so Guardian can try its doubled direct path and then the
+		// shared pool. A later ambiguous transport error must not be hidden.
+		if resp != nil {
+			resp.Body.Close()
+		}
+		retry.Request = req
+		return retry, nil
+	}
+	if retryErr != nil && retryWhy != "" && resp != nil &&
+		resp.StatusCode == http.StatusUnavailableForLegalReasons {
+		// The second route failed before connecting, so the first route's 451
+		// remains definitive and can safely proceed to Guardian recovery.
+		resp.Request = req
+		return resp, nil
+	}
+	if resp != nil {
+		resp.Body.Close()
+	}
 	if retryErr != nil && err != nil {
 		return nil, fmt.Errorf("%w; %s: %w", err, t.relay.relay.Host, retryErr)
+	}
+	if retry != nil {
+		retry.Request = req
 	}
 	return retry, retryErr
 }
@@ -207,9 +232,8 @@ func (t *relayFallback) try(rt http.RoundTripper, req *http.Request) (*http.Resp
 	switch {
 	case err != nil && !connected.Load() && req.Context().Err() == nil && retryable:
 		return nil, logx.Err(err), err
-	case err == nil && resp.StatusCode == http.StatusUnavailableForLegalReasons && retryable:
-		resp.Body.Close()
-		return nil, "HTTP 451", fmt.Errorf("%s: HTTP 451", req.URL.Host)
+	case err == nil && resp != nil && resp.StatusCode == http.StatusUnavailableForLegalReasons && retryable:
+		return resp, "HTTP 451", nil
 	}
 	if resp != nil {
 		resp.Request = req
