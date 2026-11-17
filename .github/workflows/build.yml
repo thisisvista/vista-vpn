@@ -121,7 +121,9 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - name: Relay worker syntax
-        run: node --check docs/relay/cloudflare/worker.js
+        run: |
+          node --check docs/relay/cloudflare/worker.js
+          node --check docs/relay/cloudflare/shared-worker.js
       - name: Relay PHP syntax
         run: php -l docs/relay/php/relay.php
       - uses: subosito/flutter-action@v2
