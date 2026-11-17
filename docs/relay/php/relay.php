@@ -36,6 +36,7 @@ function fail($status, $why)
     http_response_code($status);
     header('X-Relay-Error: ' . $why);
     header('Content-Type: text/plain');
+    header('Cache-Control: no-store');
     echo $why;
     exit;
 }
@@ -61,6 +62,7 @@ function page($state)
     $path = $steps ? '<div class="path"><span>' . implode('</span><i>›</i><span>', $steps) . '</span></div>' : '';
     http_response_code($status);
     header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
     echo <<<HTML
 <!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Vista VPN relay</title>
