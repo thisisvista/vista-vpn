@@ -208,6 +208,7 @@ class _SettingsList extends StatelessWidget {
         Widget tile(IconData icon, String title, VoidCallback onTap) =>
             matches(title) || matches(activeGroup)
                 ? ListTile(
+                    key: ValueKey('mobile-settings-tile-$title'),
                     leading: Icon(icon),
                     title: Text(title),
                     trailing: const Icon(Icons.chevron_right_rounded),
