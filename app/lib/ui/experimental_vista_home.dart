@@ -9,7 +9,6 @@ import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../core/updates.dart';
 import '../l10n/app_localizations.dart';
-import '../platform.dart';
 import 'format.dart';
 import 'widgets.dart';
 
