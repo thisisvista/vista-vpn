@@ -102,25 +102,40 @@ func TestAutomaticRelayCanFollowPersonalRelay(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	personalTransport := &automaticRelayFixtureRoundTripper{roundTrip: func(req *http.Request) (*http.Response, error) {
+	var directHits, personalHits atomic.Int32
+	directTransport := &automaticRelayFixtureRoundTripper{roundTrip: func(req *http.Request) (*http.Response, error) {
+		directHits.Add(1)
 		return &http.Response{
 			StatusCode: http.StatusUnavailableForLegalReasons,
 			Header:     make(http.Header),
-			Body:       io.NopCloser(strings.NewReader(`{"error":"fixture refusal"}`)),
+			Body:       io.NopCloser(strings.NewReader(`{"error":"direct refusal"}`)),
 			Request:    req,
 		}, nil
 	}}
-	apiRelayTransport = personalTransport
-	controlplane.SetTransport(personalTransport)
+	personal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		personalHits.Add(1)
+		w.WriteHeader(http.StatusUnavailableForLegalReasons)
+	}))
+	defer personal.Close()
+	personalURL, _ := url.Parse(personal.URL + "/?secret=fixture")
+	fallback := &relayFallback{
+		direct: directTransport,
+		relay:  &relayTransport{relay: personalURL, base: personal.Client().Transport},
+	}
+	apiRelayTransport = fallback
+	controlplane.SetTransport(fallback)
 
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
-	_, err := guardian.FetchProxyPass(ctx, guardian.DefaultEndpoint, "fixture")
+	_, err := guardian.FetchUserInfo(ctx, guardian.DefaultEndpoint, "fixture")
 	if !errors.Is(err, guardian.ErrRegionUnavailable) {
 		t.Fatalf("fixture refusal changed: %v", err)
 	}
+	if directHits.Load() < 2 || personalHits.Load() < 2 {
+		t.Fatalf("expected direct and personal attempts for original and doubled paths, got direct=%d personal=%d", directHits.Load(), personalHits.Load())
+	}
 	if metadataRequests.Load() == 0 {
-		t.Fatal("shared relay discovery was not attempted after the personal relay returned 451")
+		t.Fatal("shared relay discovery was not attempted after direct and personal routes returned 451")
 	}
 }
 
