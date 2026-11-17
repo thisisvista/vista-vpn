@@ -19,7 +19,6 @@ class InstalledApp {
 /// Per-app routing: the selected apps are bypassed; all other apps use the VPN.
 class AppRouting {
   AppRouting({
-    required this.onlyChosen,
     this.allApps = false,
     required this.bypass,
     required this.only,
