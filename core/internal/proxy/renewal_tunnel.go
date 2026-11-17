@@ -40,28 +40,3 @@ func (o renewalSessionOpener) OpenTunnel(address string) (net.Conn, error) {
 	return &managedTunnelConn{Conn: conn, release: release}, nil
 }
 
-// openTunnelContext makes cancellation effective even when opening a stream
-// is blocked by the upstream implementation.
-func openTunnelContext(ctx context.Context, opener renewalSessionOpener, authority string) (net.Conn, error) {
-	type result struct {
-		conn net.Conn
-		err  error
-	}
-	ch := make(chan result, 1)
-	go func() {
-		conn, err := opener.OpenTunnel(authority)
-		select {
-		case ch <- result{conn: conn, err: err}:
-		case <-ctx.Done():
-			if conn != nil {
-				_ = conn.Close()
-			}
-		}
-	}()
-	select {
-	case r := <-ch:
-		return r.conn, r.err
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-}
