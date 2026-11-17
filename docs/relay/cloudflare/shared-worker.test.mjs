@@ -134,8 +134,7 @@ test("rejects request bodies larger than 1 MiB", async () => {
     const response = await sharedWorker.fetch(
       relayRequest("https://vpn.mozilla.org/api/v1/fpn/activate", {
         method: "POST",
-        headers: { "Content-Length": String(1024 * 1024 + 1) },
-        body: "x",
+        body: new Uint8Array(1024 * 1024 + 1),
       }),
       makeEnv(),
     );
