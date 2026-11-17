@@ -174,6 +174,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Map<String, Object?>? _config;
   bool _saving = false;
   String? _dnsPreset;
+  String _sectionQuery = '';
 
   CoreController get _core => widget.core;
 
@@ -364,21 +365,47 @@ class _SettingsPageState extends State<SettingsPage> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: onTap,
               );
+          final query = _sectionQuery.trim().toLowerCase();
           return ListView(
             padding: pagePadding(context),
             children: [
               PageTitle(l.settingsTitle),
-              for (final (title, entries) in groups)
-                SettingsGroup(
-                  title: title,
-                  tiles: [
-                    for (final (section, icon, name) in entries)
-                      row(icon, name, () => setState(() => _open = section)),
-                    if (onOpenLogs != null &&
-                        entries.last.$1 == SettingsSection.advanced)
-                      row(Icons.receipt_long_outlined, l.navLogs, onOpenLogs),
-                  ],
+              TextField(
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  hintText: l.search,
+                  suffixIcon: query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => setState(() => _sectionQuery = ''),
+                        ),
+                  border: const OutlineInputBorder(),
+                  isDense: true,
                 ),
+                onChanged: (value) => setState(() => _sectionQuery = value),
+              ),
+              const SizedBox(height: 8),
+              for (final (title, entries) in groups)
+                if (query.isEmpty ||
+                    title.toLowerCase().contains(query) ||
+                    entries.any((entry) => entry.$3.toLowerCase().contains(query)))
+                  SettingsGroup(
+                    title: title,
+                    tiles: [
+                      for (final (section, icon, name) in entries)
+                        if (query.isEmpty ||
+                            title.toLowerCase().contains(query) ||
+                            name.toLowerCase().contains(query))
+                          row(icon, name, () => setState(() => _open = section)),
+                      if (onOpenLogs != null &&
+                          entries.last.$1 == SettingsSection.advanced &&
+                          (query.isEmpty || title.toLowerCase().contains(query) ||
+                              l.navLogs.toLowerCase().contains(query)))
+                        row(Icons.receipt_long_outlined, l.navLogs, onOpenLogs),
+                    ],
+                  ),
             ],
           );
         }
