@@ -186,12 +186,6 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     }
   }
 
-  String _appRoutingLabel(AppLocalizations l) => switch (_appRoutingMode) {
-    'all' => l.localeName.startsWith('fa') ? 'همه برنامه‌ها' : 'All apps',
-    'include' => l.appModeInclude,
-    _ => l.appModeExclude,
-  };
-
   String _sessionTime(DateTime? startedAt) {
     if (startedAt == null) return '';
     final elapsed = DateTime.now().difference(startedAt);
@@ -967,7 +961,7 @@ class _HomeRoutingOption extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     ),
