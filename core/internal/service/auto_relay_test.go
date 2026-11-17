@@ -94,10 +94,10 @@ func TestAutomaticRelayCanFollowPersonalRelay(t *testing.T) {
 	t.Setenv("VISTA_VPN_UPDATE_SERVER", metadata.URL)
 
 	if err := configureAPIRelay(config.Network{
-		APIRelay:         "https://personal.example/?secret=fixture",
-		APIRelayEnabled:  true,
+		APIRelay:          "https://personal.example/?secret=fixture",
+		APIRelayEnabled:   true,
 		SharedRelayEnabled: true,
-		APIRelayECH:     config.RelayECHOff,
+		APIRelayECH:       config.RelayECHOff,
 	}); err != nil {
 		t.Fatal(err)
 	}
