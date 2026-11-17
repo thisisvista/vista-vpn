@@ -973,61 +973,6 @@ class _HomeModeChip extends StatelessWidget {
 
 // Retained as a small reusable home-routing row for the next UI iteration.
 // ignore: unused_element
-class _HomeRoutingOption extends StatelessWidget {
-  const _HomeRoutingOption({
-    required this.title,
-    required this.subtitle,
-    required this.selected,
-    required this.onTap,
-    required this.muted,
-    required this.foreground,
-    // ignore: unused_element_parameter
-    this.trailing,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final VoidCallback onTap;
-  final Color muted;
-  final Color foreground;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-      child: Row(
-        children: [
-          Icon(
-            selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-            size: 19,
-            color: selected ? const Color(0xFF58DDB8) : muted,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w700,
-                )),
-                const SizedBox(height: 2),
-                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: muted)),
-              ],
-            ),
-          ),
-          ?trailing,
-        ],
-      ),
-    ),
-  );
-}
-
 class _ActionCard extends StatelessWidget {
   const _ActionCard({required this.onTap, required this.child});
 
