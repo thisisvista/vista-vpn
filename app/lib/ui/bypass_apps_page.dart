@@ -13,10 +13,7 @@ import 'widgets.dart';
 /// (mostly the system's) show on request, or when chosen. The choice is
 /// kept by the app (CoreService.kt) and applied as the selection changes.
 class BypassAppsPage extends StatefulWidget {
-  const BypassAppsPage({super.key, this.region});
-
-  /// The routing region's name while routing is on; its apps are marked.
-  final String? region;
+  const BypassAppsPage({super.key});
 
   @override
   State<BypassAppsPage> createState() => _BypassAppsPageState();
@@ -155,31 +152,6 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          if (!routing.allApps &&
-                              !routing.onlyChosen &&
-                              routing.suggested.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  final added = routing.checkSuggested(
-                                    _apps!.map((a) => a.package),
-                                  );
-                                  setState(_sort);
-                                  _save();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(l.suggestedAdded(added)),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.auto_awesome_rounded),
-                                label: Text(l.suggestedApps),
-                              ),
-                            ),
-                          ],
                           const SizedBox(height: 12),
                           if (!routing.allApps)
                             TextField(
@@ -196,9 +168,6 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                     );
                   }
                   final app = apps[i - 1];
-                  final onList =
-                      widget.region != null &&
-                      routing.suggested.contains(app.package);
                   final icon = _icons.putIfAbsent(
                     app.package,
                     () => AndroidCore.appIcon(app.package),
@@ -220,10 +189,8 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                     ),
                     title: Text(app.label),
                     subtitle: Text(
-                      onList ? l.fromRegionList(widget.region!) : app.package,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: onList ? theme.colorScheme.primary : null,
-                      ),
+                      app.package,
+                      style: theme.textTheme.bodySmall,
                       overflow: TextOverflow.ellipsis,
                     ),
                   );
