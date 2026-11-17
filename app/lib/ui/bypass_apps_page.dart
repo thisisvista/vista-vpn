@@ -6,12 +6,9 @@ import '../core/android_core.dart';
 import '../l10n/app_localizations.dart';
 import 'widgets.dart';
 
-/// Android, per-app proxy (v2rayN's words): bypass the selected apps, or
-/// proxy only the selected apps. The routing region's list (Iran's banks,
-/// messengers, and the like) is a suggestion: checked at first, and again
-/// with "Suggested apps", never forced. The apps without a launcher icon
-/// (mostly the system's) show on request, or when chosen. The choice is
-/// kept by the app (CoreService.kt) and applied as the selection changes.
+/// Android per-app routing: only the apps explicitly selected by the
+/// user are bypassed or routed through the VPN. System apps can be shown
+/// on request. Changes apply immediately.
 class BypassAppsPage extends StatefulWidget {
   const BypassAppsPage({super.key});
 
