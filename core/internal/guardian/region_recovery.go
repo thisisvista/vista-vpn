@@ -1,6 +1,8 @@
 package guardian
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"sync"
@@ -13,9 +15,10 @@ var regionRecovery struct {
 	retry func(*http.Request) (*http.Response, error)
 }
 
-// SetRegionRecovery supplies optional recovery only after Guardian HTTP 451.
-// It does not replace the shared control-plane transport or its TLS profile.
-// A nil response or a failed retry leaves the original 451 response readable.
+// SetRegionRecovery supplies optional recovery after Guardian HTTP 451 or a
+// transport failure. It does not replace the shared control-plane transport
+// or its TLS profile. A nil response or failed retry preserves the original
+// response or error.
 func SetRegionRecovery(retry func(*http.Request) (*http.Response, error)) {
 	regionRecovery.Lock()
 	regionRecovery.retry = retry
@@ -24,8 +27,26 @@ func SetRegionRecovery(retry func(*http.Request) (*http.Response, error)) {
 
 func do(req *http.Request) (*http.Response, error) {
 	resp, err := controlplane.Do(req)
-	if err != nil || resp.StatusCode != http.StatusUnavailableForLegalReasons {
+	if err != nil {
+		// An explicit cancellation belongs to the caller and must never be
+		// bypassed. A deadline timeout, however, may be recoverable through
+		// another route with its own bounded budget.
+		if errors.Is(err, context.Canceled) || errors.Is(req.Context().Err(), context.Canceled) {
+			return resp, err
+		}
+		if retry := regionRecoveryRetry(); retry != nil {
+			recoveryReq := req
+			if errors.Is(req.Context().Err(), context.DeadlineExceeded) {
+				recoveryReq = req.Clone(context.WithoutCancel(req.Context()))
+			}
+			if recovered, retryErr := retry(recoveryReq); retryErr == nil && recovered != nil {
+				return recovered, nil
+			}
+		}
 		return resp, err
+	}
+	if resp == nil || resp.StatusCode != http.StatusUnavailableForLegalReasons {
+		return resp, nil
 	}
 
 	// Mozilla's CDN edge refuses the region for the literal Guardian path
@@ -44,16 +65,19 @@ func do(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	regionRecovery.RLock()
-	retry := regionRecovery.retry
-	regionRecovery.RUnlock()
-	if retry != nil && req.Context().Err() == nil {
+	if retry := regionRecoveryRetry(); retry != nil && req.Context().Err() == nil {
 		if recovered, retryErr := retry(req); retryErr == nil && recovered != nil {
 			resp.Body.Close()
 			return recovered, nil
 		}
 	}
 	return resp, nil
+}
+
+func regionRecoveryRetry() func(*http.Request) (*http.Response, error) {
+	regionRecovery.RLock()
+	defer regionRecovery.RUnlock()
+	return regionRecovery.retry
 }
 
 // doubledPathRequest clones req with one more leading slash on its path. It
