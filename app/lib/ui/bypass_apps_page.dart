@@ -113,7 +113,7 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           DropdownButtonFormField<String>(
-                            value: routing.allApps
+                            initialValue: routing.allApps
                                 ? 'all'
                                 : routing.onlyChosen
                                     ? 'include'
