@@ -84,8 +84,13 @@ func TryRenewalTunnel(req *http.Request) (*http.Response, error, bool) {
 		resp.StatusCode == http.StatusMisdirectedRequest ||
 		resp.StatusCode == http.StatusUnavailableForLegalReasons ||
 		(readOnly && resp.StatusCode >= 500) {
-		resp.Body.Close()
-		return nil, nil, false
+		if readOnly {
+			resp.Body.Close()
+			return nil, nil, false
+		}
+		// A write may have reached Guardian; never send it again merely
+		// because the tunnel returned an unusual HTTP status.
+		return resp, nil, true
 	}
 	if readOnly && resp.StatusCode == http.StatusOK {
 		body, readErr := io.ReadAll(resp.Body)
