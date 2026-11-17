@@ -16,9 +16,9 @@ var regionRecovery struct {
 }
 
 // SetRegionRecovery supplies optional recovery after Guardian HTTP 451 or a
-// transport failure. It does not replace the shared control-plane transport
-// or its TLS profile. A nil response or failed retry preserves the original
-// response or error.
+// safe-method transport failure. It does not replace the shared control-plane
+// transport or its TLS profile. A nil response or failed retry preserves the
+// original response or error.
 func SetRegionRecovery(retry func(*http.Request) (*http.Response, error)) {
 	regionRecovery.Lock()
 	regionRecovery.retry = retry
@@ -29,14 +29,19 @@ func do(req *http.Request) (*http.Response, error) {
 	resp, err := controlplane.Do(req)
 	if err != nil {
 		// An explicit cancellation belongs to the caller and must never be
-		// bypassed. A deadline timeout, however, may be recoverable through
-		// another route with its own bounded budget.
+		// bypassed. A transport failure is retried only for safe, read-only
+		// Guardian methods: POST /activate may have succeeded remotely even
+		// when its response was lost, so replaying it could duplicate effects.
 		if errors.Is(err, context.Canceled) || errors.Is(req.Context().Err(), context.Canceled) {
+			return resp, err
+		}
+		if req.Method != http.MethodGet && req.Method != http.MethodHead {
 			return resp, err
 		}
 		if retry := regionRecoveryRetry(); retry != nil {
 			recoveryReq := req
 			if errors.Is(req.Context().Err(), context.DeadlineExceeded) {
+				// The recovery callback owns a separate, bounded timeout.
 				recoveryReq = req.Clone(context.WithoutCancel(req.Context()))
 			}
 			if recovered, retryErr := retry(recoveryReq); retryErr == nil && recovered != nil {
