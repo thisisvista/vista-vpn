@@ -909,11 +909,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => BypassAppsPage(
-                        region: on && region.isNotEmpty
-                            ? regionName(l, region)
-                            : null,
-                      ),
+                      builder: (_) => const BypassAppsPage(),
                     ),
                   ),
                 ),
