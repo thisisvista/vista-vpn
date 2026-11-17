@@ -971,6 +971,8 @@ class _HomeModeChip extends StatelessWidget {
   }
 }
 
+// Retained as a small reusable home-routing row for the next UI iteration.
+// ignore: unused_element
 class _HomeRoutingOption extends StatelessWidget {
   const _HomeRoutingOption({
     required this.title,
@@ -979,6 +981,7 @@ class _HomeRoutingOption extends StatelessWidget {
     required this.onTap,
     required this.muted,
     required this.foreground,
+    // ignore: unused_element_parameter
     this.trailing,
   });
 
