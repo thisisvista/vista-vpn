@@ -21,10 +21,12 @@ import (
 	"github.com/thisisvista/vista-vpn/core/internal/guardian"
 )
 
-type automaticRelayFixtureRoundTripper func(*http.Request) (*http.Response, error)
+type automaticRelayFixtureRoundTripper struct {
+	roundTrip func(*http.Request) (*http.Response, error)
+}
 
-func (f automaticRelayFixtureRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
+func (f *automaticRelayFixtureRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f.roundTrip(req)
 }
 
 func TestAutomaticRelayKeepsCustomControlPlaneIsolated(t *testing.T) {
@@ -100,14 +102,14 @@ func TestAutomaticRelayCanFollowPersonalRelay(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	personalTransport := automaticRelayFixtureRoundTripper(func(req *http.Request) (*http.Response, error) {
+	personalTransport := &automaticRelayFixtureRoundTripper{roundTrip: func(req *http.Request) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: http.StatusUnavailableForLegalReasons,
 			Header:     make(http.Header),
 			Body:       io.NopCloser(strings.NewReader(`{"error":"fixture refusal"}`)),
 			Request:    req,
 		}, nil
-	})
+	}}
 	apiRelayTransport = personalTransport
 	controlplane.SetTransport(personalTransport)
 
