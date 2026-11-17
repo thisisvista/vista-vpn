@@ -98,11 +98,7 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           DropdownButtonFormField<String>(
-                            initialValue: routing.allApps
-                                ? 'all'
-                                : routing.onlyChosen
-                                    ? 'include'
-                                    : 'exclude',
+                            initialValue: routing.allApps ? 'all' : 'exclude',
                             isExpanded: true,
                             decoration: const InputDecoration(
                               isDense: true,
@@ -121,16 +117,12 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                                 value: 'exclude',
                                 child: Text(l.appModeExclude),
                               ),
-                              DropdownMenuItem(
-                                value: 'include',
-                                child: Text(l.appModeInclude),
-                              ),
                             ],
                             onChanged: (value) {
                               if (value == null) return;
                               setState(() {
                                 routing.allApps = value == 'all';
-                                routing.onlyChosen = value == 'include';
+                                routing.onlyChosen = false;
                                 _sort();
                               });
                               _save();
@@ -142,9 +134,7 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                                 ? (l.localeName.startsWith('fa')
                                     ? 'تمام برنامه‌ها از VPN عبور می‌کنند و فهرست انتخاب‌ها حفظ می‌شود.'
                                     : 'All apps use the VPN. Your saved app selections are preserved.')
-                                : routing.onlyChosen
-                                    ? l.appModeIncludeHint
-                                    : l.appModeExcludeHint,
+                                : l.appModeExcludeHint,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
