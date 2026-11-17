@@ -232,3 +232,52 @@ func TestRegionRecoveryDetachesExpiredDeadlineForBoundedRetry(t *testing.T) {
 		t.Fatal("recovery was not attempted after the deadline")
 	}
 }
+
+
+func TestRegionRecoveryDoesNotReplayPostAfterTransportFailure(t *testing.T) {
+	previous := controlplane.Transport()
+	t.Cleanup(func() { controlplane.SetTransport(previous); SetRegionRecovery(nil) })
+	controlplane.SetTransport(regionRoundTrip(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("connection reset after request write")
+	}))
+	called := false
+	SetRegionRecovery(func(*http.Request) (*http.Response, error) {
+		called = true
+		return regionResponse(nil, http.StatusOK, `{"subscribed":true}`), nil
+	})
+
+	req, _ := http.NewRequest(http.MethodPost, "https://vpn.mozilla.org/api/v1/fpn/activate", nil)
+	_, err := do(req)
+	if err == nil || !strings.Contains(err.Error(), "connection reset") {
+		t.Fatalf("original ambiguous transport error was not preserved: %v", err)
+	}
+	if called {
+		t.Fatal("POST activation must not be replayed after an ambiguous transport failure")
+	}
+}
+
+func TestRegionRecoveryRetriesHeadAfterTransportFailure(t *testing.T) {
+	previous := controlplane.Transport()
+	t.Cleanup(func() { controlplane.SetTransport(previous); SetRegionRecovery(nil) })
+	controlplane.SetTransport(regionRoundTrip(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("network is unreachable")
+	}))
+	called := false
+	SetRegionRecovery(func(r *http.Request) (*http.Response, error) {
+		called = true
+		if r.Method != http.MethodHead {
+			t.Fatalf("method changed during recovery: %s", r.Method)
+		}
+		return regionResponse(r, http.StatusOK, ""), nil
+	})
+
+	req, _ := http.NewRequest(http.MethodHead, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	resp, err := do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("HEAD recovery failed: response=%v error=%v", resp, err)
+	}
+	resp.Body.Close()
+	if !called {
+		t.Fatal("recovery was not attempted for a safe HEAD request")
+	}
+}
