@@ -180,11 +180,16 @@ export default {
       }
     }
 
+    const upstreamHeaders = cleanHeaders(request.headers);
+    // Keep the response body uncompressed so its size cap and forwarded
+    // Content-Encoding headers describe the same bytes.
+    upstreamHeaders.set("Accept-Encoding", "identity");
+
     let upstream;
     try {
       upstream = await fetch(target, {
         method,
-        headers: cleanHeaders(request.headers),
+        headers: upstreamHeaders,
         body,
         redirect: "manual",
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
