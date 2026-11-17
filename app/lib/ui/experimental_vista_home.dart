@@ -8,9 +8,12 @@ import '../app_settings.dart';
 import '../core/android_core.dart';
 import '../core/core_controller.dart';
 import '../core/models.dart';
+import '../core/ports.dart';
 import '../core/updates.dart';
 import '../l10n/app_localizations.dart';
+import 'bypass_apps_page.dart';
 import 'format.dart';
+import 'port_dialog.dart';
 import 'widgets.dart';
 
 /// Experimental phone home based on the Vista dark V-emblem mockup.
@@ -40,6 +43,9 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
   Timer? _clock;
   String? _dismissedUpdateVersion;
   String _appRoutingMode = 'exclude';
+  String _connectionMode = 'vpn';
+  int _selectedAppCount = 0;
+  int _proxyPort = 1080;
   late final AnimationController _floatController;
 
   @override
@@ -54,7 +60,9 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     });
     if (Platform.isAndroid) {
       AndroidCore.appRoutingMode.addListener(_syncAppRoutingMode);
+      AndroidCore.mode.addListener(_syncConnectionMode);
       _loadAppRoutingMode();
+      _loadProxyPort();
     }
   }
 
@@ -65,10 +73,18 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     }
   }
 
+  void _syncConnectionMode() {
+    final mode = AndroidCore.mode.value;
+    if (mounted && mode != _connectionMode) {
+      setState(() => _connectionMode = mode);
+    }
+  }
+
   @override
   void dispose() {
     if (Platform.isAndroid) {
       AndroidCore.appRoutingMode.removeListener(_syncAppRoutingMode);
+      AndroidCore.mode.removeListener(_syncConnectionMode);
     }
     _clock?.cancel();
     _floatController.dispose();
@@ -108,17 +124,66 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
             : routing.onlyChosen
                 ? 'include'
                 : 'exclude';
+        _selectedAppCount = routing.only.length;
       });
     } catch (_) {
       // The settings page remains available if the native bridge is not ready.
     }
   }
 
-  Future<void> _setAppRoutingMode(String mode) async {
+  Future<void> _loadProxyPort() async {
+    try {
+      final config = await widget.core.settings();
+      final proxy = config['proxy'];
+      final listen = proxy is Map<String, Object?> ? proxy['listen'] as String? ?? '' : '';
+      final port = portOf(listen) ?? 1080;
+      if (mounted) setState(() => _proxyPort = port);
+    } catch (_) {
+      // The core settings page remains available if the API is not ready.
+    }
+  }
+
+  Future<void> _selectHomeMode(String choice) async {
     await runShowingErrors(context, () async {
-      await AndroidCore.setAppRoutingMode(mode);
-      if (mounted) setState(() => _appRoutingMode = mode);
+      if (choice == 'proxy') {
+        await AndroidCore.setMode('proxy');
+        if (mounted) setState(() => _connectionMode = 'proxy');
+        return;
+      }
+      if (AndroidCore.mode.value != 'vpn') {
+        await AndroidCore.setMode('vpn');
+      }
+      await AndroidCore.setAppRoutingMode(choice);
+      final routing = await AndroidCore.appRouting();
+      if (mounted) {
+        setState(() {
+          _connectionMode = 'vpn';
+          _appRoutingMode = choice;
+          _selectedAppCount = routing.only.length;
+        });
+      }
     });
+  }
+
+  Future<void> _openPerAppProxy() async {
+    await _selectHomeMode('include');
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const BypassAppsPage()),
+    );
+    await _loadAppRoutingMode();
+  }
+
+  Future<void> _changeHomeProxyPort() async {
+    final port = await showPortDialog(context, current: '$_proxyPort');
+    if (port == null || !mounted) return;
+    final ok = await runShowingErrors(
+      context,
+      () => widget.core.setProxyPort(port),
+    );
+    if (ok && mounted) {
+      setState(() => _proxyPort = port);
+    }
   }
 
   String _appRoutingLabel(AppLocalizations l) => switch (_appRoutingMode) {
@@ -576,77 +641,116 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                   Center(
                     child: FractionallySizedBox(
                       widthFactor: 0.86,
-                      child: _ActionCard(
-                        onTap: widget.onOpenSettings,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF36DDB3).withValues(alpha: 0.11),
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: const Icon(
-                            Icons.apps_rounded,
-                            color: Color(0xFF58DDB8),
-                            size: 23,
-                          ),
+                      child: Material(
+                        color: card,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: border),
                         ),
-                        const SizedBox(width: 13),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                l.localeName.startsWith('fa')
-                                    ? 'حالت برنامه‌ها'
-                                    : 'App routing',
-                                style: baseText.titleSmall?.copyWith(
-                                  color: foreground,
-                                  fontWeight: FontWeight.w700,
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _HomeRoutingOption(
+                              title: 'All apps',
+                              subtitle: 'All of the phone traffic goes through the VPN',
+                              selected: _connectionMode == 'vpn' && _appRoutingMode == 'all',
+                              onTap: () => _selectHomeMode('all'),
+                              muted: muted,
+                              foreground: foreground,
+                            ),
+                            Divider(height: 1, indent: 14, endIndent: 14, color: border),
+                            _HomeRoutingOption(
+                              title: 'Selected apps',
+                              subtitle: _selectedAppCount == 0
+                                  ? 'Choose which apps use the VPN'
+                                  : '$_selectedAppCount apps selected',
+                              selected: _connectionMode == 'vpn' && _appRoutingMode == 'include',
+                              onTap: () => _selectHomeMode('include'),
+                              muted: muted,
+                              foreground: foreground,
+                              trailing: Text(
+                                '$_selectedAppCount',
+                                style: baseText.labelMedium?.copyWith(color: muted),
+                              ),
+                            ),
+                            if (_connectionMode == 'vpn' && _appRoutingMode == 'include')
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 0, 12, 9),
+                                child: Material(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.045)
+                                      : const Color(0xFFF1F4F8),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: _openPerAppProxy,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.apps_rounded, size: 17, color: muted),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Per-app proxy',
+                                              style: baseText.bodySmall?.copyWith(
+                                                color: foreground,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          Icon(Icons.chevron_right_rounded, size: 18, color: muted),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _appRoutingLabel(l),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: baseText.bodySmall?.copyWith(color: muted),
+                            Divider(height: 1, indent: 14, endIndent: 14, color: border),
+                            _HomeRoutingOption(
+                              title: 'Proxy',
+                              subtitle: _connectionMode == 'proxy' ? 'Local proxy mode' : 'Use the local proxy port',
+                              selected: _connectionMode == 'proxy',
+                              onTap: () => _selectHomeMode('proxy'),
+                              muted: muted,
+                              foreground: foreground,
+                            ),
+                            if (_connectionMode == 'proxy')
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                                child: Material(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.045)
+                                      : const Color(0xFFF1F4F8),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: _changeHomeProxyPort,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.settings_ethernet_rounded, size: 17, color: muted),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Proxy port  $_proxyPort',
+                                              style: baseText.bodySmall?.copyWith(
+                                                color: foreground,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          Icon(Icons.edit_rounded, size: 16, color: muted),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ],
-                          ),
-                        ),
-                        PopupMenuButton<String>(
-                          tooltip: l.localeName.startsWith('fa')
-                              ? 'تغییر حالت برنامه‌ها'
-                              : 'Change app routing',
-                          onSelected: _setAppRoutingMode,
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'all',
-                              child: Text(
-                                l.localeName.startsWith('fa')
-                                    ? 'همه برنامه‌ها'
-                                    : 'All apps',
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'exclude',
-                              child: Text(l.appModeExclude),
-                            ),
-                            PopupMenuItem(
-                              value: 'include',
-                              child: Text(l.appModeInclude),
-                            ),
                           ],
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(Icons.expand_more_rounded, color: muted),
-                          ),
                         ),
-                      ],
-                    ),
                       ),
                     ),
                   ),
@@ -814,6 +918,60 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
       ),
     );
   }
+}
+
+class _HomeRoutingOption extends StatelessWidget {
+  const _HomeRoutingOption({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+    required this.muted,
+    required this.foreground,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color muted;
+  final Color foreground;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      child: Row(
+        children: [
+          Icon(
+            selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+            size: 19,
+            color: selected ? const Color(0xFF58DDB8) : muted,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w700,
+                )),
+                const SizedBox(height: 2),
+                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: muted)),
+              ],
+            ),
+          ),
+          if (trailing != null) trailing!,
+        ],
+      ),
+    ),
+  );
 }
 
 class _ActionCard extends StatelessWidget {
