@@ -250,6 +250,7 @@ func TestAutomaticRelayDisabledMetadataIsAuthoritative(t *testing.T) {
 	f.urls = []string{f.relay("/good")}
 	f.pool.manifestURLs = append(f.pool.manifestURLs, f.server.URL+"/mirror")
 	req, _ := http.NewRequest(http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	req.Header.Set("Authorization", "Bearer fixture")
 	resp, err := f.pool.recover(req)
 	if resp != nil || err == nil || len(f.requests) != 1 {
 		t.Fatalf("disabled pool used: %v %v %v", resp, err, f.requests)
@@ -448,5 +449,46 @@ func TestAutomaticRelayHonorsCallerDeadlineDuringHealthProbe(t *testing.T) {
 	}
 	if elapsed > time.Second {
 		t.Fatalf("recovery ignored the caller deadline: took %s", elapsed)
+	}
+}
+
+
+type automaticRelayDeadlineCapture struct {
+	base      http.RoundTripper
+	remaining *atomic.Int64
+}
+
+func (t automaticRelayDeadlineCapture) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Ignore the health probe's shorter client timeout; capture only the
+	// authenticated Guardian request whose context carries the pool budget.
+	if req.URL.Query().Get("health") != "1" && req.Header.Get("Authorization") != "" {
+		if deadline, ok := req.Context().Deadline(); ok {
+			t.remaining.CompareAndSwap(0, int64(time.Until(deadline)))
+		}
+	}
+	return t.base.RoundTrip(req)
+}
+
+func TestAutomaticRelayRecoveryUsesTwentySecondBudget(t *testing.T) {
+	f := newRelayPoolFixture(t)
+	f.urls = []string{f.relay("/good")}
+	var remaining atomic.Int64
+	f.pool.transport = func(*url.URL) (http.RoundTripper, error) {
+		return automaticRelayDeadlineCapture{
+			base: f.server.Client().Transport, remaining: &remaining,
+		}, nil
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	req.Header.Set("Authorization", "Bearer fixture")
+	resp, err := f.pool.recover(req)
+	if err != nil {
+		t.Fatalf("recovery failed: %v", err)
+	}
+	resp.Body.Close()
+
+	left := time.Duration(remaining.Load())
+	if left <= 19*time.Second || left > autoRelayBudget {
+		t.Fatalf("recovery context did not use the 20-second budget: remaining=%s", left)
 	}
 }
