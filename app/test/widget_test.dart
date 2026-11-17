@@ -2595,7 +2595,11 @@ void main() {
     final relayTile = find.byKey(
       const ValueKey('mobile-settings-tile-سرور رله'),
     ).first;
-    await tester.scrollUntilVisible(relayTile, 200);
+    await tester.scrollUntilVisible(
+      relayTile,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(relayTile);
     await tester.pumpAndSettle();
     // A text setting's Save goes under its field, which keeps the width.
