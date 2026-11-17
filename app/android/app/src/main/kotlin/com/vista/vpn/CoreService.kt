@@ -494,22 +494,25 @@ class CoreService : VpnService() {
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+        /** Migrates the old home-screen Include selection into the bypass list. */
+        fun migrateLegacyAppMode(context: Context): Boolean {
+            val p = prefs(context)
+            val stored = p.getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
+            if (stored != MODE_INCLUDE) return false
+            // The old "Selected Apps" entry mistakenly saved checked apps as
+            // Include. Preserve those choices, but apply them as Bypass.
+            val oldBypass = appSet(context, BYPASS)
+            val oldOnly = appSet(context, ONLY)
+            p.edit()
+                .putString(MODE, MODE_EXCLUDE)
+                .putStringSet(BYPASS, oldBypass + oldOnly)
+                .apply()
+            return true
+        }
+
         fun appMode(context: Context): String {
+            migrateLegacyAppMode(context)
             val stored = prefs(context).getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
-            // Migrate older Vista Include settings to Arman's bypass behavior.
-            if (stored == MODE_INCLUDE) {
-                // The old home-screen "Selected Apps" entry mistakenly saved
-                // its checked apps as Include. Preserve that user selection by
-                // migrating it to the bypass list, then enforce Arman's mode.
-                val oldBypass = appSet(context, BYPASS)
-                val oldOnly = appSet(context, ONLY)
-                prefs(context).edit()
-                    .putString(MODE, MODE_EXCLUDE)
-                    .putStringSet(BYPASS, oldBypass + oldOnly)
-                    .apply()
-                reconnect(context)
-                return MODE_EXCLUDE
-            }
             return if (stored == MODE_ALL) MODE_ALL else MODE_EXCLUDE
         }
 
