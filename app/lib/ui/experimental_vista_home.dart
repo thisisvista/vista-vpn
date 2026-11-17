@@ -561,8 +561,11 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                   },
                 ),
                 if (Platform.isAndroid) ...[
-                  _ActionCard(
-                    onTap: widget.onOpenSettings,
+                  Center(
+                    child: FractionallySizedBox(
+                      widthFactor: 0.92,
+                      child: _ActionCard(
+                        onTap: widget.onOpenSettings,
                     child: Row(
                       children: [
                         Container(
@@ -631,6 +634,8 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                           ),
                         ),
                       ],
+                    ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 11),
