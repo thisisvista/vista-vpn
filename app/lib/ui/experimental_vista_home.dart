@@ -136,7 +136,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
       final config = await widget.core.settings();
       final proxy = config['proxy'];
       final listen = proxy is Map<String, Object?> ? proxy['listen'] as String? ?? '' : '';
-      final port = portOf(listen) ?? 1080;
+      final port = portOf(listen) ?? 10810;
       if (mounted) setState(() => _proxyPort = port);
     } catch (_) {
       // The core settings page remains available if the API is not ready.
