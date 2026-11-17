@@ -49,11 +49,24 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
-    if (Platform.isAndroid) _loadAppRoutingMode();
+    if (Platform.isAndroid) {
+      AndroidCore.appRoutingMode.addListener(_syncAppRoutingMode);
+      _loadAppRoutingMode();
+    }
+  }
+
+  void _syncAppRoutingMode() {
+    final mode = AndroidCore.appRoutingMode.value;
+    if (mounted && mode != _appRoutingMode) {
+      setState(() => _appRoutingMode = mode);
+    }
   }
 
   @override
   void dispose() {
+    if (Platform.isAndroid) {
+      AndroidCore.appRoutingMode.removeListener(_syncAppRoutingMode);
+    }
     _clock?.cancel();
     _floatController.dispose();
     super.dispose();
