@@ -188,7 +188,7 @@ curl_setopt_array($ch, [
             http_response_code((int)$m[1]);
         } elseif ($trimmed !== '' && strpos($trimmed, ':') !== false) {
             $name = strtolower(trim(strstr($trimmed, ':', true)));
-            if (!in_array($name, $HOP, true)) {
+            if (!in_array($name, $HOP, true) && $name !== 'cache-control') {
                 header($trimmed, false);
             }
         }
@@ -207,6 +207,10 @@ if ($method === 'POST') {
 if ($method === 'HEAD') {
     curl_setopt($ch, CURLOPT_NOBODY, true);
 }
+// Mark forwarded responses so the shared Guardian pool can verify their origin.
+// Never cache account tokens or other control-plane responses.
+header('X-Vista-Relay: 1');
+header('Cache-Control: no-store');
 if (curl_exec($ch) === false && !headers_sent()) {
     fail(502, 'the target did not answer: ' . curl_error($ch));
 }
