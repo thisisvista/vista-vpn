@@ -169,19 +169,11 @@ class MainActivity : FlutterActivity() {
                     inBackground(result) { appIcon(pkg) }
                 }
                 "appRouting" -> inBackground(result) {
-                    // The page shows the region's apps installed since the
-                    // last look checked; the VPN takes them at once.
-                    if (CoreService.appMode(this) == CoreService.MODE_EXCLUDE &&
-                        CoreService.suggest(this, force = true)
-                    ) {
-                        CoreService.reconnect(this)
-                    }
                     mapOf(
                         "mode" to CoreService.appMode(this),
                         "bypass" to CoreService.appSet(this, CoreService.BYPASS).toList(),
                         "only" to CoreService.appSet(this, CoreService.ONLY).toList(),
                         "declined" to CoreService.appSet(this, CoreService.DECLINED).toList(),
-                        "region" to CoreService.regionAppList(),
                     )
                 }
                 "setAppRouting" -> {
