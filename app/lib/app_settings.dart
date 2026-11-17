@@ -36,8 +36,8 @@ class AppSettings extends ChangeNotifier {
   /// location is shown by its country either way.
   bool showPublicIp = false;
 
-  /// Shows the Android app-routing shortcut on the home screen; on by default.
-  bool showAppRouting = true;
+  /// Shows the Android app-routing shortcut on the home screen; off by default.
+  bool showAppRouting = false;
 
   /// How a new account signs in (the accounts page's row).
   SignInMethod signInMethod = SignInMethod.api;
@@ -192,7 +192,7 @@ class AppSettings extends ChangeNotifier {
             CloseAction.values.asNameMap()[j['close']] ?? CloseAction.ask;
         s.firstRun = j['welcome_done'] != true;
         s.showPublicIp = j['show_public_ip'] == true;
-        s.showAppRouting = j['show_app_routing'] != false;
+        s.showAppRouting = j['show_app_routing'] == true;
         s.signInMethod =
             SignInMethod.values.asNameMap()[j['signin_method']] ??
             s.signInMethod;
