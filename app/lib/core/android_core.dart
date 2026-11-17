@@ -286,18 +286,23 @@ class AndroidCore {
   }
 
   /// Keeps which apps use the VPN; [apply] sets a running VPN up again.
-  static Future<void> setAppRouting(AppRouting r, {required bool apply}) =>
-      _channel.invokeMethod<void>('setAppRouting', {
-        'mode': r.allApps ? 'all' : r.onlyChosen ? 'include' : 'exclude',
-        'bypass': r.bypass.toList(),
-        'only': r.only.toList(),
-        'declined': r.declined.toList(),
-        'apply': apply,
-      });
+  static Future<void> setAppRouting(AppRouting r, {required bool apply}) async {
+    final mode = r.allApps ? 'all' : r.onlyChosen ? 'include' : 'exclude';
+    await _channel.invokeMethod<void>('setAppRouting', {
+      'mode': mode,
+      'bypass': r.bypass.toList(),
+      'only': r.only.toList(),
+      'declined': r.declined.toList(),
+      'apply': apply,
+    });
+    appRoutingMode.value = mode;
+  }
 
   /// Changes only the active per-app routing mode, preserving both app lists.
-  static Future<void> setAppRoutingMode(String value) =>
-      _channel.invokeMethod<void>('setAppRoutingMode', {'mode': value});
+  static Future<void> setAppRoutingMode(String value) async {
+    await _channel.invokeMethod<void>('setAppRoutingMode', {'mode': value});
+    appRoutingMode.value = value;
+  }
 
   /// The phone's main processor type, such as arm64-v8a.
   static Future<String> abi() async =>
