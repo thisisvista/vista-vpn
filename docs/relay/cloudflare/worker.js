@@ -21,6 +21,8 @@
 // sign-in and the account tokens cross it).
 const SECRET = "";
 
+const MAX_REQUEST_BODY = 1024 * 1024; // 1 MiB; Guardian payloads are small.
+
 const ALLOWED = [
   "mozilla.org", "mozilla.com", "firefox.com", // accounts, Guardian, server list
   "github.com", "githubusercontent.com", "jsdelivr.net", // geo files, flags
@@ -30,7 +32,44 @@ const ALLOWED = [
 const DROP = ["host", "connection", "content-length", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade", "forwarded", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host", "x-real-ip", "true-client-ip"];
 
 function fail(status, why) {
-  return new Response(why, { status, headers: { "X-Relay-Error": why, "Content-Type": "text/plain" } });
+  return new Response(why, {
+    status,
+    headers: {
+      "X-Relay-Error": why,
+      "Content-Type": "text/plain",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+// Read request bodies with a hard limit, including chunked requests that
+// do not declare Content-Length.
+async function readLimitedBody(request) {
+  const declared = request.headers.get("content-length");
+  if (declared !== null && (!/^\\d+$/.test(declared) || Number(declared) > MAX_REQUEST_BODY)) {
+    throw new RangeError("request body too large");
+  }
+  if (!request.body) return new Uint8Array();
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_REQUEST_BODY) {
+      await reader.cancel();
+      throw new RangeError("request body too large");
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
 }
 
 // The page for whoever opens the relay's URL in a browser (no url
@@ -110,6 +149,10 @@ export default {
       return health();
     }
     if (browser) return page("works");
+    const method = request.method.toUpperCase();
+    if (!["GET", "HEAD", "POST"].includes(method)) {
+      return fail(405, "method not allowed");
+    }
     let target;
     try {
       target = new URL(here.searchParams.get("url") || "");
@@ -120,8 +163,18 @@ export default {
     if (target.username || target.password || target.hash || (target.port && target.port !== "443")) {
       return fail(400, "target must not contain credentials, a fragment or a non-HTTPS port");
     }
+    if (
+      target.href.length > 8192 ||
+      target.username ||
+      target.password ||
+      target.hash ||
+      (target.port && target.port !== "443")
+    ) {
+      return fail(400, "target must not contain credentials, a fragment, or a non-HTTPS port");
+    }
     const host = target.hostname.toLowerCase();
-    if (!ALLOWED.some((domain) => host === domain || host.endsWith("." + domain))) {
+    if (!/^[a-z0-9.-]+$/.test(host) || host.endsWith(".") ||
+        !ALLOWED.some((domain) => host === domain || host.endsWith("." + domain))) {
       return fail(403, `host not allowed: ${host}`);
     }
     const headers = new Headers();
@@ -130,12 +183,18 @@ export default {
       if (DROP.includes(lower) || lower.startsWith("cf-")) continue;
       headers.set(name, value);
     }
-    // The client's requests are small (sign-in, tokens): read whole.
-    const hasBody = request.method !== "GET" && request.method !== "HEAD";
-    const body = hasBody ? await request.arrayBuffer() : undefined;
+    let body;
+    if (method === "POST") {
+      try {
+        body = await readLimitedBody(request);
+      } catch (error) {
+        if (error instanceof RangeError) return fail(413, "request body exceeds 1 MiB");
+        return fail(400, "could not read request body");
+      }
+    }
     // Redirects go back to the client, which follows them through the relay.
     try {
-      const upstream = await fetch(target, { method: request.method, headers, body, redirect: "manual" });
+      const upstream = await fetch(target, { method, headers, body, redirect: "manual" });
       const responseHeaders = new Headers(upstream.headers);
       // Distinguish a forwarded Guardian response from a Cloudflare error
       // generated before the worker runs (for example an exhausted quota).
