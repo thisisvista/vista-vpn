@@ -480,6 +480,7 @@ func TestAutomaticRelayRecoveryUsesTwentySecondBudget(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	req.Header.Set("Authorization", "Bearer fixture")
 	resp, err := f.pool.recover(req)
 	if err != nil {
 		t.Fatalf("recovery failed: %v", err)
