@@ -340,6 +340,12 @@ class CoreService : VpnService() {
                 }
             }
         }
+        // "All apps" is a distinct mode: keep the saved bypass/include
+        // lists intact, but do not apply either list to this VPN session.
+        if (appMode(this) == MODE_ALL) {
+            builder.addDisallowedApplication(packageName)
+            return
+        }
         // Only the chosen apps that are still installed: with none, the
         // allow list would be empty, and Android would send every app, this
         // one included, into the VPN (a loop). Then it is as if none were
@@ -458,6 +464,7 @@ class CoreService : VpnService() {
         private const val MODE = "app_mode"
         const val MODE_EXCLUDE = "exclude"
         const val MODE_INCLUDE = "include"
+        const val MODE_ALL = "all"
 
         private const val CONNECTION = "connection_mode"
 
@@ -551,6 +558,14 @@ class CoreService : VpnService() {
             val edit = prefs(context).edit().putString(MODE, mode)
             for ((key, packages) in sets) edit.putStringSet(key, packages)
             edit.apply()
+        }
+
+        /** Changes only the active routing mode; saved app selections are untouched. */
+        fun setAppRoutingMode(context: Context, mode: String): Boolean {
+            if (mode !in setOf(MODE_ALL, MODE_EXCLUDE, MODE_INCLUDE)) return false
+            prefs(context).edit().putString(MODE, mode).apply()
+            reconnect(context)
+            return true
         }
 
         /**
