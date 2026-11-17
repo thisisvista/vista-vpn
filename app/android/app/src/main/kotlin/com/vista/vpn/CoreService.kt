@@ -529,6 +529,7 @@ class CoreService : VpnService() {
         /** Changes only the active routing mode; saved app selections are untouched. */
         fun setAppRoutingMode(context: Context, mode: String): Boolean {
             if (mode !in setOf(MODE_ALL, MODE_EXCLUDE)) return false
+            migrateLegacyAppMode(context)
             prefs(context).edit().putString(MODE, mode).apply()
             reconnect(context)
             return true
