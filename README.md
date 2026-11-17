@@ -38,8 +38,8 @@ Available for **Android, Windows, macOS, and Linux** — free to use and without
 - **Flexible server choice:** compare locations by latency or let the app choose a suitable server.
 - **Modern connection protocols:** supports HTTP/1.1, HTTP/2, and HTTP/3.
 - **Firefox-style TLS:** uses uTLS to begin connections to Mozilla with a Firefox-like TLS fingerprint.
-- **Split tunneling:** select the apps and websites that should connect outside the VPN.
-- 🛠️ **Tools for restricted networks:** TLS fragmentation, an upstream SOCKS5 proxy, and an optional [relay server](docs/relay/README.md).
+- **Android app bypass:** choose specific apps to bypass the VPN; all other apps continue to use the VPN.
+- 🛠️ **Tools for restricted networks:** TLS fragmentation, an upstream SOCKS5 proxy, and [Guardian Relay](docs/relay/README.md), which can discover and use a healthy shared relay automatically when the direct Guardian service responds with HTTP 451.
 - **Move your setup:** back up and restore accounts and settings on another device or server.
 - **Connection settings:** choose IPv4, IPv6, or dual-stack mode, and configure a custom MTU.
 - **Private DNS requests:** encrypted DNS through DNS over HTTPS.
@@ -47,6 +47,15 @@ Available for **Android, Windows, macOS, and Linux** — free to use and without
 - **Light or dark:** switch between the two available themes.
 - **Open development:** source code is available for review and contributions.
 - **Kill switch (Android):** helps prevent internet traffic from bypassing the VPN if the VPN connection drops. Enabled by default on fresh installs; Android's system-level Always-on VPN and “Block connections without VPN” provide additional protection if the app is stopped.
+
+## Android app routing
+
+The Android app offers two routing choices:
+
+- **All Apps:** route all apps through the VPN.
+- **Bypass selected apps:** selected apps connect directly to the internet, outside the VPN. Apps not on the bypass list continue to use the VPN.
+
+Open **Bypass Apps** from the home screen or routing settings to choose which apps should bypass the VPN.
 
 ## 🖼️ Screenshots
 
