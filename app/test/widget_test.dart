@@ -2592,7 +2592,7 @@ void main() {
     expect((control.center.dy - label.center.dy).abs(), lessThan(24));
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    final relayTile = find.text('سرور رله').last;
+    final relayTile = find.byKey(const ValueKey('mobile-settings-tile-سرور رله'));
     await tester.scrollUntilVisible(relayTile, 200);
     await tester.tap(relayTile);
     await tester.pumpAndSettle();
