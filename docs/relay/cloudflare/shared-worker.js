@@ -70,7 +70,7 @@ function health() {
   });
 }
 
-function forwardedHeaders(source) {
+function cleanHeaders(source) {
   const headers = new Headers();
   for (const [name, value] of source) {
     const lower = name.toLowerCase();
@@ -84,6 +84,11 @@ function forwardedHeaders(source) {
     }
     headers.append(name, value);
   }
+  return headers;
+}
+
+function responseHeaders(source) {
+  const headers = cleanHeaders(source);
   headers.set("X-Vista-Relay", "1");
   headers.set("Cache-Control", "no-store");
   return headers;
@@ -179,7 +184,7 @@ export default {
     try {
       upstream = await fetch(target, {
         method,
-        headers: forwardedHeaders(request.headers),
+        headers: cleanHeaders(request.headers),
         body,
         redirect: "manual",
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
@@ -205,7 +210,7 @@ export default {
     return new Response(responseBody, {
       status: upstream.status,
       statusText: upstream.statusText,
-      headers: forwardedHeaders(upstream.headers),
+      headers: responseHeaders(upstream.headers),
     });
   },
 };
