@@ -119,12 +119,8 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
       final routing = await AndroidCore.appRouting();
       if (!mounted) return;
       setState(() {
-        _appRoutingMode = routing.allApps
-            ? 'all'
-            : routing.onlyChosen
-                ? 'include'
-                : 'exclude';
-        _selectedAppCount = routing.only.length;
+        _appRoutingMode = routing.allApps ? 'all' : 'exclude';
+        _selectedAppCount = routing.bypass.length;
       });
     } catch (_) {
       // The settings page remains available if the native bridge is not ready.
@@ -159,14 +155,14 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
         setState(() {
           _connectionMode = 'vpn';
           _appRoutingMode = choice;
-          _selectedAppCount = routing.only.length;
+          _selectedAppCount = routing.bypass.length;
         });
       }
     });
   }
 
-  Future<void> _openPerAppProxy() async {
-    await _selectHomeMode('include');
+  Future<void> _openBypassApps() async {
+    await _selectHomeMode('exclude');
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const BypassAppsPage()),
@@ -658,8 +654,8 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                   ),
                                   _HomeModeChip(
                                     title: 'Selected Apps',
-                                    selected: _connectionMode == 'vpn' && _appRoutingMode == 'include',
-                                    onTap: () => _selectHomeMode('include'),
+                                    selected: _connectionMode == 'vpn' && _appRoutingMode == 'exclude',
+                                    onTap: () => _selectHomeMode('exclude'),
                                     foreground: foreground,
                                     muted: muted,
                                   ),
@@ -672,7 +668,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                   ),
                                 ],
                               ),
-                              if (_connectionMode == 'vpn' && _appRoutingMode == 'include')
+                              if (_connectionMode == 'vpn' && _appRoutingMode == 'exclude')
                                 Padding(
                                   padding: const EdgeInsets.only(top: 5),
                                   child: Material(
@@ -682,7 +678,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                     borderRadius: BorderRadius.circular(9),
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(9),
-                                      onTap: _openPerAppProxy,
+                                      onTap: _openBypassApps,
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                         child: Row(
@@ -691,7 +687,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                             const SizedBox(width: 7),
                                             Expanded(
                                               child: Text(
-                                                'Per-app proxy',
+                                                'Bypass Apps',
                                                 style: baseText.labelMedium?.copyWith(
                                                   color: foreground,
                                                   fontWeight: FontWeight.w600,
@@ -699,7 +695,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                               ),
                                             ),
                                             Text(
-                                              '$_selectedAppCount selected',
+                                              '$_selectedAppCount bypassed',
                                               style: baseText.labelSmall?.copyWith(color: muted),
                                             ),
                                             const SizedBox(width: 3),
