@@ -262,8 +262,8 @@ type Network struct {
 	// shared relay pool. On by default for an address already configured.
 	APIRelayEnabled bool `json:"api_relay_enabled"`
 	// SharedRelayEnabled allows the manifest's shared Guardian relay pool
-	// after HTTP 451 is first retried directly with a doubled path. An
-	// enabled personal relay takes priority.
+	// after direct and personal-relay attempts fail. The pool is a fallback
+	// for Guardian control-plane requests, never VPN tunnel traffic.
 	SharedRelayEnabled bool `json:"shared_relay_enabled"`
 	// APIRelayECH hides the relay's name from the network with Encrypted
 	// Client Hello (TLS 1.3): "on" (or empty: with ECH when the relay's
@@ -520,10 +520,10 @@ func (n Network) APIRelayInUse() string {
 	return n.APIRelay
 }
 
-// SharedRelayInUse is independent of the personal relay's switch and saved
-// address. Only an enabled, nonempty personal relay takes priority.
+// SharedRelayInUse reports whether the shared Guardian pool is enabled.
+// It may follow the personal relay when both direct and personal routes fail.
 func (n Network) SharedRelayInUse() bool {
-	return n.SharedRelayEnabled && strings.TrimSpace(n.APIRelayInUse()) == ""
+	return n.SharedRelayEnabled
 }
 
 // SettleUpstreamProxy is the upstream proxy as a client saved it over prev:
