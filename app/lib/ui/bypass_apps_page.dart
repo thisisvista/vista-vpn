@@ -72,7 +72,8 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
     final q = _query.trim().toLowerCase();
     final apps = [
       for (final a in _apps ?? const <InstalledApp>[])
-        if ((a.launcher || _showSystem || routing!.checked(a.package)) &&
+        if (!routing!.allApps &&
+            (a.launcher || _showSystem || routing.checked(a.package)) &&
             (q.isEmpty ||
                 a.label.toLowerCase().contains(q) ||
                 a.package.toLowerCase().contains(q)))
@@ -111,22 +112,35 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SegmentedButton<bool>(
+                          SegmentedButton<String>(
                             showSelectedIcon: false,
                             segments: [
                               ButtonSegment(
-                                value: false,
+                                value: 'all',
+                                label: Text(
+                                  l.localeName.startsWith('fa') ? 'همه برنامه‌ها' : 'All apps',
+                                ),
+                              ),
+                              ButtonSegment(
+                                value: 'exclude',
                                 label: Text(l.appModeExclude),
                               ),
                               ButtonSegment(
-                                value: true,
+                                value: 'include',
                                 label: Text(l.appModeInclude),
                               ),
                             ],
-                            selected: {routing.onlyChosen},
+                            selected: {
+                              routing.allApps
+                                  ? 'all'
+                                  : routing.onlyChosen
+                                      ? 'include'
+                                      : 'exclude',
+                            },
                             onSelectionChanged: (v) {
                               setState(() {
-                                routing.onlyChosen = v.first;
+                                routing.allApps = v.first == 'all';
+                                routing.onlyChosen = v.first == 'include';
                                 _sort();
                               });
                               _save();
@@ -134,9 +148,13 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            routing.onlyChosen
-                                ? l.appModeIncludeHint
-                                : l.appModeExcludeHint,
+                            routing.allApps
+                                ? (l.localeName.startsWith('fa')
+                                    ? 'تمام برنامه‌ها از VPN عبور می‌کنند و فهرست انتخاب‌ها حفظ می‌شود.'
+                                    : 'All apps use the VPN. Your saved app selections are preserved.')
+                                : routing.onlyChosen
+                                    ? l.appModeIncludeHint
+                                    : l.appModeExcludeHint,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
