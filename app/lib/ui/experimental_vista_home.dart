@@ -3,10 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/android_core.dart';
 import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../core/updates.dart';
 import '../l10n/app_localizations.dart';
+import '../platform.dart';
 import 'format.dart';
 import 'widgets.dart';
 
@@ -34,6 +36,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     with SingleTickerProviderStateMixin {
   Timer? _clock;
   String? _dismissedUpdateVersion;
+  String _appRoutingMode = 'exclude';
   late final AnimationController _floatController;
 
   @override
@@ -46,6 +49,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
+    if (Platform.isAndroid) _loadAppRoutingMode();
   }
 
   @override
@@ -77,6 +81,35 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
       }
     });
   }
+
+  Future<void> _loadAppRoutingMode() async {
+    try {
+      final routing = await AndroidCore.appRouting();
+      if (!mounted) return;
+      setState(() {
+        _appRoutingMode = routing.allApps
+            ? 'all'
+            : routing.onlyChosen
+                ? 'include'
+                : 'exclude';
+      });
+    } catch (_) {
+      // The settings page remains available if the native bridge is not ready.
+    }
+  }
+
+  Future<void> _setAppRoutingMode(String mode) async {
+    await runShowingErrors(context, () async {
+      await AndroidCore.setAppRoutingMode(mode);
+      if (mounted) setState(() => _appRoutingMode = mode);
+    });
+  }
+
+  String _appRoutingLabel(AppLocalizations l) => switch (_appRoutingMode) {
+    'all' => l.localeName.startsWith('fa') ? 'همه برنامه‌ها' : 'All apps',
+    'include' => l.appModeInclude,
+    _ => l.appModeExclude,
+  };
 
   String _sessionTime(DateTime? startedAt) {
     if (startedAt == null) return '';
@@ -514,6 +547,81 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                     );
                   },
                 ),
+                if (Platform.isAndroid) ...[
+                  _ActionCard(
+                    onTap: widget.onOpenSettings,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF36DDB3).withValues(alpha: 0.11),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: const Icon(
+                            Icons.apps_rounded,
+                            color: Color(0xFF58DDB8),
+                            size: 23,
+                          ),
+                        ),
+                        const SizedBox(width: 13),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l.localeName.startsWith('fa')
+                                    ? 'حالت برنامه‌ها'
+                                    : 'App routing',
+                                style: baseText.titleSmall?.copyWith(
+                                  color: foreground,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _appRoutingLabel(l),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: baseText.bodySmall?.copyWith(color: muted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          tooltip: l.localeName.startsWith('fa')
+                              ? 'تغییر حالت برنامه‌ها'
+                              : 'Change app routing',
+                          onSelected: _setAppRoutingMode,
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'all',
+                              child: Text(
+                                l.localeName.startsWith('fa')
+                                    ? 'همه برنامه‌ها'
+                                    : 'All apps',
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'exclude',
+                              child: Text(l.appModeExclude),
+                            ),
+                            PopupMenuItem(
+                              value: 'include',
+                              child: Text(l.appModeInclude),
+                            ),
+                          ],
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(Icons.expand_more_rounded, color: muted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 11),
+                ],
                 _ActionCard(
                   onTap: widget.onOpenServers,
                   child: Row(
