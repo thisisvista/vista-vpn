@@ -2,5 +2,11 @@
   "android": "1.0.22",
   "linux": "1.0.22",
   "macos": "1.0.22",
-  "windows": "1.0.22"
+  "windows": "1.0.22",
+  "relays": {
+    "enabled": true,
+    "urls": [
+      "https://vista-shared-guardian-relay.vistavpn-shared-relay.workers.dev/"
+    ]
+  }
 }

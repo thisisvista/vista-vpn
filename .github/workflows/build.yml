@@ -60,17 +60,26 @@ jobs:
         env:
           PLATFORMS: ${{ vars.PLATFORMS }}
         run: |
-          jq -e 'type == "object"
-            and all(keys[]; IN("android", "linux", "macos", "windows"))
-            and all(.[]; type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' .github/updates.json >/dev/null || {
-            echo "::error::updates.json must be an object whose keys are android, linux, macos, or windows, each with a \"major.minor.patch\" version"
+          jq -e '
+            type == "object"
+            and all(keys[]; IN("android", "linux", "macos", "windows", "relays"))
+            and all(to_entries[] | select(.key != "relays"); .value | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+            and (if has("relays") then
+              (.relays | type == "object"
+                and (keys | sort) == ["enabled", "urls"]
+                and (.enabled | type == "boolean")
+                and (.urls | type == "array" and all(.[]; type == "string" and startswith("https://")))
+              )
+            else true end)
+          ' .github/updates.json >/dev/null || {
+            echo "::error::updates.json must contain platform versions and, optionally, relays with boolean enabled and HTTPS URL strings"
             exit 1
           }
           # A version that is never released would stop that system's
           # updates without a word.
           v="${{ steps.version.outputs.version }}"
           ahead="$(jq -r --arg v "$v" '($v | split(".") | map(tonumber)) as $app
-            | to_entries[] | select((.value | split(".") | map(tonumber)) > $app) | "\(.key) \(.value)"' .github/updates.json | xargs)"
+            | to_entries[] | select(.key != "relays") | select((.value | split(".") | map(tonumber)) > $app) | "\(.key) \(.value)"' .github/updates.json | xargs)"
           if [ -n "$ahead" ]; then
             echo "::error::updates.json names versions newer than app/pubspec.yaml ($v): $ahead"
             exit 1
@@ -97,7 +106,7 @@ jobs:
               seen[$platform]=1
             done
             selected_systems="$(printf '%s\n' "${!seen[@]}" | sort)"
-            manifest_systems="$(jq -r --arg v "$v" 'to_entries[] | select(.value == $v) | .key' .github/updates.json | sort)"
+            manifest_systems="$(jq -r --arg v "$v" 'to_entries[] | select(.key != "relays") | select(.value == $v) | .key' .github/updates.json | sort)"
             if [ "$selected_systems" != "$manifest_systems" ]; then
               echo "::error::PLATFORMS selects: $(echo "$selected_systems" | paste -sd, -); updates.json assigns tag $v to: $(echo "$manifest_systems" | paste -sd, -). These lists must match exactly."
               exit 1
