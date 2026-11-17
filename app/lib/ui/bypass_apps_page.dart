@@ -11,7 +11,7 @@ import 'widgets.dart';
 /// messengers, and the like) is a suggestion: checked at first, and again
 /// with "Suggested apps", never forced. The apps without a launcher icon
 /// (mostly the system's) show on request, or when chosen. The choice is
-/// kept by the app (CoreService.kt) and applied when the page closes.
+/// kept by the app (CoreService.kt) and applied as the selection changes.
 class BypassAppsPage extends StatefulWidget {
   const BypassAppsPage({super.key, this.region});
 
@@ -77,9 +77,7 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                 a.package.toLowerCase().contains(q)))
           a,
     ];
-    return PopScope(
-      onPopInvokedWithResult: (didPop, _) {},
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: Text(l.bypassApps),
           actions: [
@@ -231,7 +229,6 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                   );
                 },
               ),
-      ),
     );
   }
 }
