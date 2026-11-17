@@ -321,9 +321,9 @@ class CoreService : VpnService() {
     }
 
     /**
-     * Which apps use the VPN (Routing in the settings): only the chosen
-     * ones (Proxy selected apps), or all but this app and the chosen ones
-     * (Bypass selected apps). Apps no longer installed are skipped.
+     * In bypass mode, all apps except this app and the selected bypass
+     * apps use the VPN. In All apps mode, every other app uses the VPN.
+     * Apps no longer installed are skipped.
      */
     private fun applyApps(builder: Builder) {
         fun each(packages: Set<String>, add: (String) -> Unit) {
@@ -335,8 +335,8 @@ class CoreService : VpnService() {
                 }
             }
         }
-        // "All apps" is a distinct mode: keep the saved bypass/include
-        // lists intact, but do not apply either list to this VPN session.
+        // "All apps" is a distinct mode: keep the saved bypass list
+        // intact, but do not apply it to this VPN session.
         if (appMode(this) == MODE_ALL) {
             builder.addDisallowedApplication(packageName)
             return
@@ -498,7 +498,16 @@ class CoreService : VpnService() {
             val stored = prefs(context).getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
             // Migrate older Vista Include settings to Arman's bypass behavior.
             if (stored == MODE_INCLUDE) {
-                prefs(context).edit().putString(MODE, MODE_EXCLUDE).apply()
+                // The old home-screen "Selected Apps" entry mistakenly saved
+                // its checked apps as Include. Preserve that user selection by
+                // migrating it to the bypass list, then enforce Arman's mode.
+                val oldBypass = appSet(context, BYPASS)
+                val oldOnly = appSet(context, ONLY)
+                prefs(context).edit()
+                    .putString(MODE, MODE_EXCLUDE)
+                    .putStringSet(BYPASS, oldBypass + oldOnly)
+                    .apply()
+                reconnect(context)
                 return MODE_EXCLUDE
             }
             return if (stored == MODE_ALL) MODE_ALL else MODE_EXCLUDE
