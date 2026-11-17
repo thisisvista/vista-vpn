@@ -2592,8 +2592,9 @@ void main() {
     expect((control.center.dy - label.center.dy).abs(), lessThan(24));
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('سرور رله'), 200);
-    await tester.tap(find.text('سرور رله'));
+    final relayTile = find.text('سرور رله').last;
+    await tester.scrollUntilVisible(relayTile, 200);
+    await tester.tap(relayTile);
     await tester.pumpAndSettle();
     // A text setting's Save goes under its field, which keeps the width.
     final field = tester.getRect(find.byType(TextField).first);
