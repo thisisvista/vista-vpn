@@ -132,7 +132,9 @@ npx wrangler deploy --config wrangler.shared.toml
 {"relay":"vista-vpn","version":1,"ready":true}
 ```
 
-این Worker رمز مشترک یا رمز شخصی در URL ندارد. فقط مقصد دقیق `https://vpn.mozilla.org/api/v1/fpn/*` را می‌پذیرد، متدهای GET/HEAD/POST را عبور می‌دهد، اندازهٔ درخواست و پاسخ را به ۱ مگابایت محدود می‌کند و برای درخواست بالادستی timeout دارد. دو Rate Limiting binding لازم‌اند: محدودیت بر اساس هش توکن Authorization و یک محدودیت ثانویه بر اساس IP. اگر bindingها تنظیم نشده باشند، health check آماده‌بودن Worker را تأیید نمی‌کند و درخواست‌ها fail-closed می‌شوند.
+این Worker رمز مشترک یا رمز شخصی در URL ندارد. فقط مقصد دقیق `https://vpn.mozilla.org/api/v1/fpn/*` را می‌پذیرد، متدهای GET/HEAD/POST را عبور می‌دهد، اندازهٔ درخواست و پاسخ را به ۱ مگابایت محدود می‌کند و برای درخواست بالادستی timeout دارد. دو Rate Limiting binding لازم‌اند: محدودیت بر اساس هش توکن Authorization (۶۰ درخواست در دقیقه) و یک محدودیت ثانویه بر اساس IP (۶۰۰ درخواست در دقیقه). برای این قابلیت از Wrangler نسخهٔ ۴.۳۶.۰ یا جدیدتر استفاده کن؛ [مستندات رسمی Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). اگر bindingها تنظیم نشده باشند، health check آماده‌بودن Worker را تأیید نمی‌کند و درخواست‌ها fail-closed می‌شوند.
+
+**حریم خصوصی:** درخواست Guardian و سرآیند Authorization از Worker و زیرساخت Cloudflare عبور می‌کند. کد این Worker توکن را ذخیره یا لاگ نمی‌کند و فقط هش آن را برای rate limiting می‌سازد؛ بااین‌حال اپراتور Worker از نظر فنی در مسیر درخواست قرار دارد. فقط از endpoint متعلق به اپراتوری استفاده کن که به او اعتماد داری.
 
 ### فعال‌کردن فهرست در برنامه
 
