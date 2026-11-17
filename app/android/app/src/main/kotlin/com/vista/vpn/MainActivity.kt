@@ -155,6 +155,14 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                 }
+                "setAppRoutingMode" -> {
+                    val mode = call.argument<String>("mode") ?: ""
+                    if (CoreService.setAppRoutingMode(this, mode)) {
+                        result.success(null)
+                    } else {
+                        result.error("invalid_app_routing_mode", "Unknown app routing mode", null)
+                    }
+                }
                 "installedApps" -> inBackground(result) { installedApps() }
                 "appIcon" -> {
                     val pkg = call.argument<String>("package") ?: ""
