@@ -341,10 +341,6 @@ class CoreService : VpnService() {
             builder.addDisallowedApplication(packageName)
             return
         }
-        // Only the chosen apps that are still installed: with none, the
-        // allow list would be empty, and Android would send every app, this
-        // one included, into the VPN (a loop). Then it is as if none were
-        // chosen. The Builder keeps what was added, so the count decides.
         // Bypass mode is the only per-app selection mode: selected apps
         // are excluded from the VPN, and every other app uses the tunnel.
         builder.addDisallowedApplication(packageName)
