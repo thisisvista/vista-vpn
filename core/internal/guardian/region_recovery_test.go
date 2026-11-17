@@ -1,11 +1,13 @@
 package guardian
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/thisisvista/vista-vpn/core/internal/controlplane"
 )
@@ -152,5 +154,130 @@ func TestRegionRecoveryReplaces451WithReadableSuccessfulResponse(t *testing.T) {
 	info, err := FetchUserInfo(t.Context(), DefaultEndpoint, "fixture")
 	if err != nil || !info.Subscribed {
 		t.Fatalf("successful recovery was lost: %v", err)
+	}
+}
+
+
+func TestRegionRecoveryRetriesNetworkFailure(t *testing.T) {
+	previous := controlplane.Transport()
+	t.Cleanup(func() { controlplane.SetTransport(previous); SetRegionRecovery(nil) })
+	controlplane.SetTransport(regionRoundTrip(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("network is unreachable")
+	}))
+	called := false
+	SetRegionRecovery(func(r *http.Request) (*http.Response, error) {
+		called = true
+		if r.URL.Path != "/api/v1/fpn/token" {
+			t.Fatalf("recovery path changed: %s", r.URL.Path)
+		}
+		return regionResponse(r, http.StatusOK, `{"token":"recovered"}`), nil
+	})
+	req, _ := http.NewRequest(http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	resp, err := do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("network recovery failed: response=%v error=%v", resp, err)
+	}
+	resp.Body.Close()
+	if !called {
+		t.Fatal("recovery was not attempted after the network error")
+	}
+}
+
+func TestRegionRecoveryDoesNotBypassExplicitCancellation(t *testing.T) {
+	previous := controlplane.Transport()
+	t.Cleanup(func() { controlplane.SetTransport(previous); SetRegionRecovery(nil) })
+	controlplane.SetTransport(regionRoundTrip(func(r *http.Request) (*http.Response, error) {
+		return nil, r.Context().Err()
+	}))
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	called := false
+	SetRegionRecovery(func(*http.Request) (*http.Response, error) {
+		called = true
+		return regionResponse(nil, http.StatusOK, `{}`), nil
+	})
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	_, err := do(req)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected cancellation, got %v", err)
+	}
+	if called {
+		t.Fatal("recovery must not bypass explicit cancellation")
+	}
+}
+
+func TestRegionRecoveryDetachesExpiredDeadlineForBoundedRetry(t *testing.T) {
+	previous := controlplane.Transport()
+	t.Cleanup(func() { controlplane.SetTransport(previous); SetRegionRecovery(nil) })
+	controlplane.SetTransport(regionRoundTrip(func(r *http.Request) (*http.Response, error) {
+		return nil, context.DeadlineExceeded
+	}))
+	called := false
+	SetRegionRecovery(func(r *http.Request) (*http.Response, error) {
+		called = true
+		if err := r.Context().Err(); err != nil {
+			t.Fatalf("expired request context was reused: %v", err)
+		}
+		return regionResponse(r, http.StatusOK, `{"token":"recovered"}`), nil
+	})
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	resp, err := do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("deadline recovery failed: response=%v error=%v", resp, err)
+	}
+	resp.Body.Close()
+	if !called {
+		t.Fatal("recovery was not attempted after the deadline")
+	}
+}
+
+
+func TestRegionRecoveryDoesNotReplayPostAfterTransportFailure(t *testing.T) {
+	previous := controlplane.Transport()
+	t.Cleanup(func() { controlplane.SetTransport(previous); SetRegionRecovery(nil) })
+	controlplane.SetTransport(regionRoundTrip(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("connection reset after request write")
+	}))
+	called := false
+	SetRegionRecovery(func(*http.Request) (*http.Response, error) {
+		called = true
+		return regionResponse(nil, http.StatusOK, `{"subscribed":true}`), nil
+	})
+
+	req, _ := http.NewRequest(http.MethodPost, "https://vpn.mozilla.org/api/v1/fpn/activate", nil)
+	_, err := do(req)
+	if err == nil || !strings.Contains(err.Error(), "connection reset") {
+		t.Fatalf("original ambiguous transport error was not preserved: %v", err)
+	}
+	if called {
+		t.Fatal("POST activation must not be replayed after an ambiguous transport failure")
+	}
+}
+
+func TestRegionRecoveryRetriesHeadAfterTransportFailure(t *testing.T) {
+	previous := controlplane.Transport()
+	t.Cleanup(func() { controlplane.SetTransport(previous); SetRegionRecovery(nil) })
+	controlplane.SetTransport(regionRoundTrip(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("network is unreachable")
+	}))
+	called := false
+	SetRegionRecovery(func(r *http.Request) (*http.Response, error) {
+		called = true
+		if r.Method != http.MethodHead {
+			t.Fatalf("method changed during recovery: %s", r.Method)
+		}
+		return regionResponse(r, http.StatusOK, ""), nil
+	})
+
+	req, _ := http.NewRequest(http.MethodHead, "https://vpn.mozilla.org/api/v1/fpn/token", nil)
+	resp, err := do(req)
+	if err != nil || resp == nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("HEAD recovery failed: response=%v error=%v", resp, err)
+	}
+	resp.Body.Close()
+	if !called {
+		t.Fatal("recovery was not attempted for a safe HEAD request")
 	}
 }
