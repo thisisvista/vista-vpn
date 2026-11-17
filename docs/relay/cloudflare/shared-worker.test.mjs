@@ -75,6 +75,7 @@ test("forwards only the Guardian FPN endpoint and sanitizes hop headers", async 
     assert.equal(seen.target, "https://vpn.mozilla.org/api/v1/fpn/token");
     assert.equal(seen.method, "GET");
     assert.equal(seen.headers.get("Authorization"), "Bearer private-fixture-token");
+    assert.equal(seen.headers.get("Accept-Encoding"), "identity");
     assert.equal(seen.headers.get("X-Forwarded-For"), null);
     assert.equal(seen.headers.get("X-Vista-Relay"), null);
     assert.ok(userKey.startsWith("token:"));
