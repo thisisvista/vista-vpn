@@ -519,12 +519,6 @@ class CoreService : VpnService() {
             return true
         }
 
-        /** The packages installed on the phone. */
-        private fun installedPackages(context: Context): Set<String> {
-            @Suppress("DEPRECATION")
-            return context.packageManager.getInstalledApplications(0).map { it.packageName }.toSet()
-        }
-
         /** Sets the VPN interface up again, if on, with the current settings. */
         fun reconnect(context: Context) {
             if (!on) return
