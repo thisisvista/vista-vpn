@@ -112,35 +112,40 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SegmentedButton<String>(
-                            showSelectedIcon: false,
-                            segments: [
-                              ButtonSegment(
+                          DropdownButtonFormField<String>(
+                            value: routing.allApps
+                                ? 'all'
+                                : routing.onlyChosen
+                                    ? 'include'
+                                    : 'exclude',
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              DropdownMenuItem(
                                 value: 'all',
-                                label: Text(
-                                  l.localeName.startsWith('fa') ? 'همه برنامه‌ها' : 'All apps',
+                                child: Text(
+                                  l.localeName.startsWith('fa')
+                                      ? 'همه برنامه‌ها'
+                                      : 'All apps',
                                 ),
                               ),
-                              ButtonSegment(
+                              DropdownMenuItem(
                                 value: 'exclude',
-                                label: Text(l.appModeExclude),
+                                child: Text(l.appModeExclude),
                               ),
-                              ButtonSegment(
+                              DropdownMenuItem(
                                 value: 'include',
-                                label: Text(l.appModeInclude),
+                                child: Text(l.appModeInclude),
                               ),
                             ],
-                            selected: {
-                              routing.allApps
-                                  ? 'all'
-                                  : routing.onlyChosen
-                                      ? 'include'
-                                      : 'exclude',
-                            },
-                            onSelectionChanged: (v) {
+                            onChanged: (value) {
+                              if (value == null) return;
                               setState(() {
-                                routing.allApps = v.first == 'all';
-                                routing.onlyChosen = v.first == 'include';
+                                routing.allApps = value == 'all';
+                                routing.onlyChosen = value == 'include';
                                 _sort();
                               });
                               _save();
