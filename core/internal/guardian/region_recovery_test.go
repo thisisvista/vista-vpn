@@ -281,3 +281,30 @@ func TestRegionRecoveryRetriesHeadAfterTransportFailure(t *testing.T) {
 		t.Fatal("recovery was not attempted for a safe HEAD request")
 	}
 }
+
+
+func TestIsRenewalTunnelRequestIsNarrowlyScoped(t *testing.T) {
+	tests := []struct {
+		method string
+		url    string
+		want   bool
+	}{
+		{http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/token", true},
+		{http.MethodHead, "https://vpn.mozilla.org/api/v1/fpn/token", true},
+		{http.MethodPost, "https://vpn.mozilla.org/api/v1/fpn/activate", true},
+		{http.MethodPost, "https://vpn.mozilla.org/api/v1/fpn/token", false},
+		{http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/activate", false},
+		{http.MethodPost, "https://example.com/api/v1/fpn/activate", false},
+		{http.MethodGet, "http://vpn.mozilla.org/api/v1/fpn/token", false},
+		{http.MethodGet, "https://vpn.mozilla.org/api/v1/fpn/status", false},
+	}
+	for _, tt := range tests {
+		req, err := http.NewRequest(tt.method, tt.url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := isRenewalTunnelRequest(req); got != tt.want {
+			t.Errorf("%s %s: got %v, want %v", tt.method, tt.url, got, tt.want)
+		}
+	}
+}
