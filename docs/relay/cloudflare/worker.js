@@ -196,6 +196,8 @@ export default {
       // Distinguish a forwarded Guardian response from a Cloudflare error
       // generated before the worker runs (for example an exhausted quota).
       responseHeaders.set("X-Vista-Relay", "1");
+      // Guardian responses can contain account tokens and quota data.
+      responseHeaders.set("Cache-Control", "no-store");
       return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers: responseHeaders });
     } catch {
       return fail(502, "upstream request failed");
