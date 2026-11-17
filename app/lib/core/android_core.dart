@@ -24,8 +24,7 @@ class AppRouting {
     this.allApps = false,
     required this.bypass,
     required this.only,
-    Set<String>? declined,
-  }) : declined = declined ?? {};
+  });
 
   /// Proxy selected apps; otherwise bypass them.
   bool onlyChosen;
@@ -38,6 +37,24 @@ class AppRouting {
 
   /// Proxy selected apps: only these use the VPN.
   final Set<String> only;
+
+  /// Whether [package] is checked in the active mode.
+  bool checked(String package) => allApps
+      ? false
+      : onlyChosen
+          ? only.contains(package)
+          : bypass.contains(package);
+
+  /// Changes the active list without affecting the other mode's selections.
+  void toggle(String package, bool value) {
+    if (allApps) return;
+    final target = onlyChosen ? only : bypass;
+    if (value) {
+      target.add(package);
+    } else {
+      target.remove(package);
+    }
+  }
 
   /// A key that changes with the choice, to know whether to apply it.
   String get key => [
@@ -248,7 +265,6 @@ class AndroidCore {
       allApps: mode == 'all',
       bypass: set('bypass'),
       only: set('only'),
-      declined: set('declined'),
     );
   }
 
@@ -259,7 +275,6 @@ class AndroidCore {
       'mode': mode,
       'bypass': r.bypass.toList(),
       'only': r.only.toList(),
-      'declined': r.declined.toList(),
       'apply': apply,
     });
     appRoutingMode.value = mode;
