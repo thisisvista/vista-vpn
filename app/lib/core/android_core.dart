@@ -95,6 +95,9 @@ class AndroidCore {
   /// A Quick Settings long-press returns the existing UI to Home.
   static final homeRequests = ValueNotifier<int>(0);
 
+  /// Active per-app routing mode, shared by Settings and the home quick switch.
+  static final appRoutingMode = ValueNotifier<String>('exclude');
+
   static void listenForHomeRequests() {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'openHome') homeRequests.value++;
@@ -268,9 +271,13 @@ class AndroidCore {
     Set<String> set(String key) => {
       for (final p in (m[key] as List<Object?>? ?? const [])) '$p',
     };
+    final mode = m['mode'] == 'all' || m['mode'] == 'include'
+        ? '${m['mode']}'
+        : 'exclude';
+    appRoutingMode.value = mode;
     return AppRouting(
-      onlyChosen: m['mode'] == 'include',
-      allApps: m['mode'] == 'all',
+      onlyChosen: mode == 'include',
+      allApps: mode == 'all',
       bypass: set('bypass'),
       only: set('only'),
       suggested: set('region'),
