@@ -46,7 +46,7 @@ function fail(status, why) {
 // do not declare Content-Length.
 async function readLimitedBody(request) {
   const declared = request.headers.get("content-length");
-  if (declared !== null && (!/^\\d+$/.test(declared) || Number(declared) > MAX_REQUEST_BODY)) {
+  if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > MAX_REQUEST_BODY)) {
     throw new RangeError("request body too large");
   }
   if (!request.body) return new Uint8Array();
@@ -160,9 +160,6 @@ export default {
       return fail(400, "url must be an https URL");
     }
     if (target.protocol !== "https:") return fail(400, "url must be an https URL");
-    if (target.username || target.password || target.hash || (target.port && target.port !== "443")) {
-      return fail(400, "target must not contain credentials, a fragment or a non-HTTPS port");
-    }
     if (
       target.href.length > 8192 ||
       target.username ||
