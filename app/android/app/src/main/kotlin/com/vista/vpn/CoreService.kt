@@ -21,8 +21,6 @@ import android.util.Log
 import android.widget.Toast
 import java.io.File
 import java.util.Locale
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The Go core (core/mobile, built into libs/core.aar by gomobile) runs in
@@ -59,7 +57,7 @@ class CoreService : VpnService() {
 
     /**
      * Keeps the notification on the country the traffic leaves from, and
-     * the routing region's apps among the bypassed ones (checkSuggested).
+     * app selections are only those explicitly chosen by the user.
      */
     private val watchCountry = object : Runnable {
         override fun run() {
@@ -114,9 +112,6 @@ class CoreService : VpnService() {
                 shownProxy = proxy
                 shownSpeed = speed
                 getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(code))
-            }
-            if (on && usesVpn(this@CoreService) && appMode(this@CoreService) == MODE_EXCLUDE) {
-                checkSuggested()
             }
             // The speed changes all the time: shown, it is read more often.
             main.postDelayed(this, if (showSpeed(this@CoreService)) SPEED_POLL_MS else COUNTRY_POLL_MS)
@@ -326,9 +321,9 @@ class CoreService : VpnService() {
     }
 
     /**
-     * Which apps use the VPN (Routing in the settings): only the chosen
-     * ones (Proxy selected apps), or all but this app and the chosen ones
-     * (Bypass selected apps). Apps no longer installed are skipped.
+     * In bypass mode, all apps except this app and the selected bypass
+     * apps use the VPN. In All apps mode, every other app uses the VPN.
+     * Apps no longer installed are skipped.
      */
     private fun applyApps(builder: Builder) {
         fun each(packages: Set<String>, add: (String) -> Unit) {
@@ -340,18 +335,14 @@ class CoreService : VpnService() {
                 }
             }
         }
-        // Only the chosen apps that are still installed: with none, the
-        // allow list would be empty, and Android would send every app, this
-        // one included, into the VPN (a loop). Then it is as if none were
-        // chosen. The Builder keeps what was added, so the count decides.
-        if (appMode(this) == MODE_INCLUDE) {
-            var added = 0
-            each(appSet(this, ONLY) - packageName) {
-                builder.addAllowedApplication(it)
-                added++
-            }
-            if (added > 0) return
+        // "All apps" is a distinct mode: keep the saved bypass list
+        // intact, but do not apply it to this VPN session.
+        if (appMode(this) == MODE_ALL) {
+            builder.addDisallowedApplication(packageName)
+            return
         }
+        // Bypass mode is the only per-app selection mode: selected apps
+        // are excluded from the VPN, and every other app uses the tunnel.
         builder.addDisallowedApplication(packageName)
         each(appSet(this, BYPASS) - packageName) { builder.addDisallowedApplication(it) }
     }
@@ -359,31 +350,6 @@ class CoreService : VpnService() {
     /** When the VPN interface last came up. */
     @Volatile
     private var tunnelUpAt = 0L
-
-    /** A look at the region's apps runs in the background (checkSuggested). */
-    private val suggesting = AtomicBoolean(false)
-
-    /**
-     * Keeps the region's apps up to date (suggest), off the UI's thread and
-     * never while the VPN connects. The first time, before the user chose
-     * any app, as soon as the region's list is there, and the VPN takes
-     * them at once; after that every 3 days, once the VPN has run a while,
-     * and the next connect takes the change: the running VPN is not cut.
-     */
-    private fun checkSuggested() {
-        val first = !hasAppChoice(this)
-        if (!first && (!suggestDue(this) || System.currentTimeMillis() - tunnelUpAt < SUGGEST_SETTLE_MS)) return
-        if (!suggesting.compareAndSet(false, true)) return
-        worker.execute {
-            try {
-                if (suggest(this) && first) {
-                    main.post { if (on && !startTunnel()) turnOff(this) }
-                }
-            } finally {
-                suggesting.set(false)
-            }
-        }
-    }
 
     private fun startInForeground() {
         val manager = getSystemService(NotificationManager::class.java)
@@ -458,6 +424,7 @@ class CoreService : VpnService() {
         private const val MODE = "app_mode"
         const val MODE_EXCLUDE = "exclude"
         const val MODE_INCLUDE = "include"
+        const val MODE_ALL = "all"
 
         private const val CONNECTION = "connection_mode"
 
@@ -521,78 +488,48 @@ class CoreService : VpnService() {
         /** The routing region's apps the user unchecked: never added again by themselves. */
         const val DECLINED = "declined_apps"
 
-        /** When suggest last looked at the installed apps. */
-        private const val SUGGESTED_AT = "suggested_at"
-
-        /** How often suggest looks for newly installed apps of the region's list. */
-        private const val SUGGEST_EVERY_MS = 3L * 24 * 60 * 60 * 1000
-
-        /** How long the VPN runs before a later look (checkSuggested). */
-        private const val SUGGEST_SETTLE_MS = 2L * 60 * 1000
-
-        /** Where the looks at the installed apps run. */
-        private val worker = Executors.newSingleThreadExecutor()
-
-        /** The user has a choice of bypassed apps (or the first look made one). */
-        fun hasAppChoice(context: Context) = prefs(context).contains(BYPASS)
-
-        /** suggest would look now. */
-        fun suggestDue(context: Context) =
-            System.currentTimeMillis() - prefs(context).getLong(SUGGESTED_AT, 0) >= SUGGEST_EVERY_MS
-
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-        fun appMode(context: Context): String = prefs(context).getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
+        /** Migrates the old home-screen Include selection into the bypass list. */
+        fun migrateLegacyAppMode(context: Context): Boolean {
+            val p = prefs(context)
+            val stored = p.getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
+            if (stored != MODE_INCLUDE) return false
+            // The old "Selected Apps" entry mistakenly saved checked apps as
+            // Include. Preserve those choices, but apply them as Bypass.
+            val oldBypass = appSet(context, BYPASS)
+            val oldOnly = appSet(context, ONLY)
+            p.edit()
+                .putString(MODE, MODE_EXCLUDE)
+                .putStringSet(BYPASS, oldBypass + oldOnly)
+                .apply()
+            return true
+        }
+
+        fun appMode(context: Context): String {
+            migrateLegacyAppMode(context)
+            val stored = prefs(context).getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
+            return if (stored == MODE_ALL) MODE_ALL else MODE_EXCLUDE
+        }
 
         fun appSet(context: Context, key: String): Set<String> = prefs(context).getStringSet(key, emptySet()) ?: emptySet()
 
         /** Keeps the app choice: the mode and the sets. */
         fun setAppRouting(context: Context, mode: String, sets: Map<String, Set<String>>) {
-            val edit = prefs(context).edit().putString(MODE, mode)
+            val safeMode = if (mode == MODE_ALL) MODE_ALL else MODE_EXCLUDE
+            val edit = prefs(context).edit().putString(MODE, safeMode)
             for ((key, packages) in sets) edit.putStringSet(key, packages)
             edit.apply()
         }
 
-        /**
-         * Keeps the routing region's suggested apps (core/routing) among the
-         * bypassed ones: those installed are added, unless the user
-         * unchecked them (DECLINED), and those no longer installed leave the
-         * list. It looks at most every 3 days, unless [force] (the routing
-         * page opens). Reports whether the bypassed apps changed.
-         */
-        fun suggest(context: Context, force: Boolean = false): Boolean {
-            val p = prefs(context)
-            val now = System.currentTimeMillis()
-            if (!force && now - p.getLong(SUGGESTED_AT, 0) < SUGGEST_EVERY_MS) return false
-            val region = regionAppList().toSet()
-            // The list comes with the core: look again once it is there.
-            if (region.isEmpty()) return false
-            val installed = installedPackages(context)
-            val before = appSet(context, BYPASS)
-            var declined = appSet(context, DECLINED)
-            if (!p.contains(SUGGESTED_AT) && p.contains(BYPASS)) {
-                // From a version that suggested the whole list once: what
-                // the user unchecked then stays out.
-                declined = declined + (region intersect installed) - before
-            }
-            val after = before - (region - installed) + ((region intersect installed) - declined)
-            p.edit()
-                .putStringSet(BYPASS, after)
-                .putStringSet(DECLINED, declined)
-                .putLong(SUGGESTED_AT, now)
-                .apply()
-            return after != before
+        /** Changes only the active routing mode; saved app selections are untouched. */
+        fun setAppRoutingMode(context: Context, mode: String): Boolean {
+            if (mode !in setOf(MODE_ALL, MODE_EXCLUDE)) return false
+            migrateLegacyAppMode(context)
+            prefs(context).edit().putString(MODE, mode).apply()
+            reconnect(context)
+            return true
         }
-
-        /** The packages installed on the phone. */
-        private fun installedPackages(context: Context): Set<String> {
-            @Suppress("DEPRECATION")
-            return context.packageManager.getInstalledApplications(0).map { it.packageName }.toSet()
-        }
-
-        /** The routing region's suggested apps (core/routing). */
-        fun regionAppList(): List<String> =
-            if (mobile.Mobile.running()) mobile.Mobile.directApps().lines().filter { it.isNotBlank() } else emptyList()
 
         /** Sets the VPN interface up again, if on, with the current settings. */
         fun reconnect(context: Context) {

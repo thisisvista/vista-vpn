@@ -6,17 +6,11 @@ import '../core/android_core.dart';
 import '../l10n/app_localizations.dart';
 import 'widgets.dart';
 
-/// Android, per-app proxy (v2rayN's words): bypass the selected apps, or
-/// proxy only the selected apps. The routing region's list (Iran's banks,
-/// messengers, and the like) is a suggestion: checked at first, and again
-/// with "Suggested apps", never forced. The apps without a launcher icon
-/// (mostly the system's) show on request, or when chosen. The choice is
-/// kept by the app (CoreService.kt) and applied when the page closes.
+/// Android per-app routing: only the apps explicitly selected by the
+/// user are bypassed or routed through the VPN. System apps can be shown
+/// on request. Changes apply immediately.
 class BypassAppsPage extends StatefulWidget {
-  const BypassAppsPage({super.key, this.region});
-
-  /// The routing region's name while routing is on; its apps are marked.
-  final String? region;
+  const BypassAppsPage({super.key});
 
   @override
   State<BypassAppsPage> createState() => _BypassAppsPageState();
@@ -29,8 +23,6 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
   List<InstalledApp>? _apps;
   AppRouting? _routing;
 
-  /// The choice when the page opened, to know whether to apply it.
-  String _initial = '';
   String _query = '';
   final Map<String, Future<Uint8List?>> _icons = {};
 
@@ -46,7 +38,6 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
     if (!mounted) return;
     setState(() {
       _routing = routing;
-      _initial = routing.key;
       _apps = apps;
       _sort();
     });
@@ -62,7 +53,8 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
     });
   }
 
-  void _save() => AndroidCore.setAppRouting(_routing!, apply: false);
+  /// Apply every app-list change immediately to the active VPN interface.
+  void _save() => AndroidCore.setAppRouting(_routing!, apply: true);
 
   @override
   Widget build(BuildContext context) {
@@ -72,20 +64,14 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
     final q = _query.trim().toLowerCase();
     final apps = [
       for (final a in _apps ?? const <InstalledApp>[])
-        if ((a.launcher || _showSystem || routing!.checked(a.package)) &&
+        if (!routing!.allApps &&
+            (a.launcher || _showSystem || routing.checked(a.package)) &&
             (q.isEmpty ||
                 a.label.toLowerCase().contains(q) ||
                 a.package.toLowerCase().contains(q)))
           a,
     ];
-    return PopScope(
-      onPopInvokedWithResult: (didPop, _) {
-        // Applied once: the VPN is set up again with the new choice.
-        if (didPop && routing != null && routing.key != _initial) {
-          AndroidCore.setAppRouting(routing, apply: true);
-        }
-      },
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: Text(l.bypassApps),
           actions: [
@@ -111,22 +97,31 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SegmentedButton<bool>(
-                            showSelectedIcon: false,
-                            segments: [
-                              ButtonSegment(
-                                value: false,
-                                label: Text(l.appModeExclude),
+                          DropdownButtonFormField<String>(
+                            initialValue: routing.allApps ? 'all' : 'exclude',
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: 'all',
+                                child: Text(
+                                  l.localeName.startsWith('fa')
+                                      ? 'همه برنامه‌ها'
+                                      : 'All apps',
+                                ),
                               ),
-                              ButtonSegment(
-                                value: true,
-                                label: Text(l.appModeInclude),
+                              DropdownMenuItem(
+                                value: 'exclude',
+                                child: Text(l.appModeExclude),
                               ),
                             ],
-                            selected: {routing.onlyChosen},
-                            onSelectionChanged: (v) {
+                            onChanged: (value) {
+                              if (value == null) return;
                               setState(() {
-                                routing.onlyChosen = v.first;
+                                routing.allApps = value == 'all';
                                 _sort();
                               });
                               _save();
@@ -134,55 +129,31 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            routing.onlyChosen
-                                ? l.appModeIncludeHint
+                            routing.allApps
+                                ? (l.localeName.startsWith('fa')
+                                    ? 'تمام برنامه‌ها از VPN عبور می‌کنند و فهرست انتخاب‌ها حفظ می‌شود.'
+                                    : 'All apps use the VPN. Your saved app selections are preserved.')
                                 : l.appModeExcludeHint,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          if (!routing.onlyChosen &&
-                              routing.suggested.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  final added = routing.checkSuggested(
-                                    _apps!.map((a) => a.package),
-                                  );
-                                  setState(_sort);
-                                  _save();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(l.suggestedAdded(added)),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.auto_awesome_rounded),
-                                label: Text(l.suggestedApps),
-                              ),
-                            ),
-                          ],
                           const SizedBox(height: 12),
-                          TextField(
-                            decoration: InputDecoration(
-                              isDense: true,
-                              prefixIcon: const Icon(Icons.search_rounded),
-                              hintText: l.search,
-                              border: const OutlineInputBorder(),
+                          if (!routing.allApps)
+                            TextField(
+                              decoration: InputDecoration(
+                                isDense: true,
+                                prefixIcon: const Icon(Icons.search_rounded),
+                                hintText: l.search,
+                                border: const OutlineInputBorder(),
+                              ),
+                              onChanged: (v) => setState(() => _query = v),
                             ),
-                            onChanged: (v) => setState(() => _query = v),
-                          ),
                         ],
                       ),
                     );
                   }
                   final app = apps[i - 1];
-                  final onList =
-                      widget.region != null &&
-                      routing.suggested.contains(app.package);
                   final icon = _icons.putIfAbsent(
                     app.package,
                     () => AndroidCore.appIcon(app.package),
@@ -204,16 +175,13 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                     ),
                     title: Text(app.label),
                     subtitle: Text(
-                      onList ? l.fromRegionList(widget.region!) : app.package,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: onList ? theme.colorScheme.primary : null,
-                      ),
+                      app.package,
+                      style: theme.textTheme.bodySmall,
                       overflow: TextOverflow.ellipsis,
                     ),
                   );
                 },
               ),
-      ),
     );
   }
 }

@@ -16,19 +16,16 @@ class InstalledApp {
   final bool launcher;
 }
 
-/// Which apps use the VPN (CoreService.kt), in v2rayN's words: bypass the
-/// selected apps ([bypass]), or proxy only the selected apps ([only]).
+/// Per-app routing: the selected apps are bypassed; all other apps use the VPN.
 class AppRouting {
   AppRouting({
-    required this.onlyChosen,
+    this.allApps = false,
     required this.bypass,
     required this.only,
-    required this.suggested,
-    Set<String>? declined,
-  }) : declined = declined ?? {};
+  });
 
-  /// Proxy selected apps; otherwise bypass them.
-  bool onlyChosen;
+  /// Route every app through the VPN, without changing either saved list.
+  bool allApps;
 
   /// Bypass selected apps: these connect directly.
   final Set<String> bypass;
@@ -36,40 +33,22 @@ class AppRouting {
   /// Proxy selected apps: only these use the VPN.
   final Set<String> only;
 
-  /// The routing region's apps (from the core), suggested for bypassing:
-  /// the installed ones are checked by themselves (CoreService.suggest),
-  /// unless the user unchecked them ([declined]).
-  final Set<String> suggested;
+  /// Whether [package] is selected to bypass the VPN.
+  bool checked(String package) => !allApps && bypass.contains(package);
 
-  /// The suggested apps the user unchecked: never checked again by
-  /// themselves, only by the user or "Suggested apps".
-  final Set<String> declined;
-
-  Set<String> get _chosen => onlyChosen ? only : bypass;
-
-  /// Whether [package] is checked in the current mode.
-  bool checked(String package) => _chosen.contains(package);
-
-  void toggle(String package, bool on) {
-    on ? _chosen.add(package) : _chosen.remove(package);
-    if (!onlyChosen && suggested.contains(package)) {
-      on ? declined.remove(package) : declined.add(package);
+  /// Changes the active list without affecting the other mode's selections.
+  void toggle(String package, bool value) {
+    if (allApps) return;
+    if (value) {
+      bypass.add(package);
+    } else {
+      bypass.remove(package);
     }
-  }
-
-  /// Checks the suggested apps that are installed, also those unchecked
-  /// before; returns how many were not checked yet.
-  int checkSuggested(Iterable<String> installed) {
-    final mine = installed.where(suggested.contains).toSet();
-    declined.removeAll(mine);
-    final add = mine..removeAll(bypass);
-    bypass.addAll(add);
-    return add.length;
   }
 
   /// A key that changes with the choice, to know whether to apply it.
   String get key => [
-    onlyChosen,
+    allApps,
     ...[bypass, only].map((s) => (s.toList()..sort()).join(',')),
   ].join('|');
 }
@@ -89,6 +68,9 @@ class AndroidCore {
 
   /// A Quick Settings long-press returns the existing UI to Home.
   static final homeRequests = ValueNotifier<int>(0);
+
+  /// Active per-app routing mode, shared by Settings and the home quick switch.
+  static final appRoutingMode = ValueNotifier<String>('exclude');
 
   static void listenForHomeRequests() {
     _channel.setMethodCallHandler((call) async {
@@ -263,24 +245,37 @@ class AndroidCore {
     Set<String> set(String key) => {
       for (final p in (m[key] as List<Object?>? ?? const [])) '$p',
     };
+    final storedMode = m['mode'] == 'all' ? 'all' : 'exclude';
+    // Older Vista builds exposed Include mode. Normalize it to the Arman
+    // behavior (bypass selected apps) without moving or deleting either list.
+    if (m['mode'] == 'include') {
+      await _channel.invokeMethod<void>('setAppRoutingMode', {'mode': 'exclude'});
+    }
+    appRoutingMode.value = storedMode;
     return AppRouting(
-      onlyChosen: m['mode'] == 'include',
+      allApps: storedMode == 'all',
       bypass: set('bypass'),
       only: set('only'),
-      suggested: set('region'),
-      declined: set('declined'),
     );
   }
 
   /// Keeps which apps use the VPN; [apply] sets a running VPN up again.
-  static Future<void> setAppRouting(AppRouting r, {required bool apply}) =>
-      _channel.invokeMethod<void>('setAppRouting', {
-        'mode': r.onlyChosen ? 'include' : 'exclude',
-        'bypass': r.bypass.toList(),
-        'only': r.only.toList(),
-        'declined': r.declined.toList(),
-        'apply': apply,
-      });
+  static Future<void> setAppRouting(AppRouting r, {required bool apply}) async {
+    final mode = r.allApps ? 'all' : 'exclude';
+    await _channel.invokeMethod<void>('setAppRouting', {
+      'mode': mode,
+      'bypass': r.bypass.toList(),
+      'only': r.only.toList(),
+      'apply': apply,
+    });
+    appRoutingMode.value = mode;
+  }
+
+  /// Changes between all-app VPN and bypass-selected-apps, preserving saved lists.
+  static Future<void> setAppRoutingMode(String value) async {
+    await _channel.invokeMethod<void>('setAppRoutingMode', {'mode': value});
+    appRoutingMode.value = value;
+  }
 
   /// The phone's main processor type, such as arm64-v8a.
   static Future<String> abi() async =>

@@ -2,53 +2,48 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vista_vpn/core/android_core.dart';
 
 AppRouting routing() => AppRouting(
-  onlyChosen: false,
+  allApps: false,
   bypass: {'my.bank'},
   only: {},
-  suggested: {'ir.bale', 'cab.snapp.passenger'},
 );
 
 void main() {
-  test('suggested apps are not forced; the button selects them', () {
+  test('only manually selected apps are bypassed', () {
     final r = routing();
-    // Only what the user chose is checked.
     expect(r.checked('ir.bale'), isFalse);
     expect(r.checked('my.bank'), isTrue);
-
-    // "Suggested apps": the installed ones are selected.
-    expect(r.checkSuggested(['ir.bale', 'org.telegram']), 1);
+    r.toggle('ir.bale', true);
     expect(r.checked('ir.bale'), isTrue);
-    expect(r.checked('cab.snapp.passenger'), isFalse); // not installed
-    expect(r.checkSuggested(['ir.bale']), 0);
-
-    // The user may uncheck one, and it stays unchecked: the phone does not
-    // check it again by itself (CoreService.suggest).
     r.toggle('ir.bale', false);
     expect(r.checked('ir.bale'), isFalse);
-    expect(r.declined, {'ir.bale'});
-    // An app of the user's own is not "declined" when unchecked.
-    r.toggle('my.bank', false);
-    expect(r.declined, {'ir.bale'});
-    // Checked again, by hand or with the button, it is the user's again.
-    r.toggle('ir.bale', true);
-    expect(r.declined, isEmpty);
-    r.toggle('ir.bale', false);
-    expect(r.checkSuggested(['ir.bale']), 1);
-    expect(r.declined, isEmpty);
   });
 
-  test('proxy selected apps keeps its own choice', () {
-    final r = routing()..onlyChosen = true;
-    expect(r.checked('my.bank'), isFalse);
+  test('toggling bypass selections never changes the legacy only-list', () {
+    final r = routing();
     r.toggle('org.telegram', true);
-    expect(r.only, {'org.telegram'});
-    expect(r.bypass, {'my.bank'});
+    expect(r.bypass, {'my.bank', 'org.telegram'});
+    expect(r.only, isEmpty);
   });
 
-  test('the key changes with the choice', () {
+  test('the key changes with bypass selections and all-app mode', () {
     final r = routing();
     final before = r.key;
     r.toggle('org.telegram', true);
     expect(r.key, isNot(before));
+    final selectedKey = r.key;
+    r.allApps = true;
+    expect(r.key, isNot(selectedKey));
+  });
+
+  test('All apps mode ignores selections without deleting saved bypass list', () {
+    final r = AppRouting(
+      allApps: true,
+      bypass: {'com.example.bypass'},
+      only: {'com.example.legacy'},
+    );
+    expect(r.checked('com.example.bypass'), isFalse);
+    r.toggle('com.example.new', true);
+    expect(r.bypass, {'com.example.bypass'});
+    expect(r.only, {'com.example.legacy'});
   });
 }

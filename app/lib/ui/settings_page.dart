@@ -519,6 +519,17 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
         if (Platform.isAndroid)
+          _Row(
+            icon: Icons.apps_rounded,
+            label: l.localeName.startsWith('fa')
+                ? 'نمایش App routing در صفحه اصلی'
+                : 'Show App routing on home screen',
+            child: Switch(
+              value: s.showAppRouting,
+              onChanged: (v) => s.update(showAppRouting: v),
+            ),
+          ),
+        if (Platform.isAndroid)
           ValueListenableBuilder(
             valueListenable: AndroidCore.showSpeed,
             builder: (context, on, _) => _Row(
@@ -898,11 +909,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => BypassAppsPage(
-                        region: on && region.isNotEmpty
-                            ? regionName(l, region)
-                            : null,
-                      ),
+                      builder: (_) => const BypassAppsPage(),
                     ),
                   ),
                 ),

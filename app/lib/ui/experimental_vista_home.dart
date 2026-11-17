@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app_settings.dart';
+import '../core/android_core.dart';
 import '../core/core_controller.dart';
 import '../core/models.dart';
+import '../core/ports.dart';
 import '../core/updates.dart';
 import '../l10n/app_localizations.dart';
+import 'bypass_apps_page.dart';
 import 'format.dart';
+import 'port_dialog.dart';
 import 'widgets.dart';
 
 /// Experimental phone home based on the Vista dark V-emblem mockup.
@@ -16,12 +22,14 @@ class ExperimentalVistaHome extends StatefulWidget {
   const ExperimentalVistaHome({
     super.key,
     required this.core,
+    required this.settings,
     required this.onOpenServers,
     required this.onOpenAccounts,
     required this.onOpenSettings,
   });
 
   final CoreController core;
+  final AppSettings settings;
   final VoidCallback onOpenServers;
   final VoidCallback onOpenAccounts;
   final VoidCallback onOpenSettings;
@@ -34,6 +42,10 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     with SingleTickerProviderStateMixin {
   Timer? _clock;
   String? _dismissedUpdateVersion;
+  String _appRoutingMode = 'exclude';
+  String _connectionMode = 'vpn';
+  int _selectedAppCount = 0;
+  int _proxyPort = 1080;
   late final AnimationController _floatController;
 
   @override
@@ -46,10 +58,34 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
+    if (Platform.isAndroid) {
+      AndroidCore.appRoutingMode.addListener(_syncAppRoutingMode);
+      AndroidCore.mode.addListener(_syncConnectionMode);
+      _loadAppRoutingMode();
+      _loadProxyPort();
+    }
+  }
+
+  void _syncAppRoutingMode() {
+    final mode = AndroidCore.appRoutingMode.value;
+    if (mounted && mode != _appRoutingMode) {
+      setState(() => _appRoutingMode = mode);
+    }
+  }
+
+  void _syncConnectionMode() {
+    final mode = AndroidCore.mode.value;
+    if (mounted && mode != _connectionMode) {
+      setState(() => _connectionMode = mode);
+    }
   }
 
   @override
   void dispose() {
+    if (Platform.isAndroid) {
+      AndroidCore.appRoutingMode.removeListener(_syncAppRoutingMode);
+      AndroidCore.mode.removeListener(_syncConnectionMode);
+    }
     _clock?.cancel();
     _floatController.dispose();
     super.dispose();
@@ -76,6 +112,74 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
         }
       }
     });
+  }
+
+  Future<void> _loadAppRoutingMode() async {
+    try {
+      final routing = await AndroidCore.appRouting();
+      if (!mounted) return;
+      setState(() {
+        _appRoutingMode = routing.allApps ? 'all' : 'exclude';
+        _selectedAppCount = routing.bypass.length;
+      });
+    } catch (_) {
+      // The settings page remains available if the native bridge is not ready.
+    }
+  }
+
+  Future<void> _loadProxyPort() async {
+    try {
+      final config = await widget.core.settings();
+      final proxy = config['proxy'];
+      final listen = proxy is Map<String, Object?> ? proxy['listen'] as String? ?? '' : '';
+      final port = portOf(listen) ?? 10810;
+      if (mounted) setState(() => _proxyPort = port);
+    } catch (_) {
+      // The core settings page remains available if the API is not ready.
+    }
+  }
+
+  Future<void> _selectHomeMode(String choice) async {
+    await runShowingErrors(context, () async {
+      if (choice == 'proxy') {
+        await AndroidCore.setMode('proxy');
+        if (mounted) setState(() => _connectionMode = 'proxy');
+        return;
+      }
+      if (AndroidCore.mode.value != 'vpn') {
+        await AndroidCore.setMode('vpn');
+      }
+      await AndroidCore.setAppRoutingMode(choice);
+      final routing = await AndroidCore.appRouting();
+      if (mounted) {
+        setState(() {
+          _connectionMode = 'vpn';
+          _appRoutingMode = choice;
+          _selectedAppCount = routing.bypass.length;
+        });
+      }
+    });
+  }
+
+  Future<void> _openBypassApps() async {
+    await _selectHomeMode('exclude');
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const BypassAppsPage()),
+    );
+    await _loadAppRoutingMode();
+  }
+
+  Future<void> _changeHomeProxyPort() async {
+    final port = await showPortDialog(context, current: '$_proxyPort');
+    if (port == null || !mounted) return;
+    final ok = await runShowingErrors(
+      context,
+      () => widget.core.setProxyPort(port),
+    );
+    if (ok && mounted) {
+      setState(() => _proxyPort = port);
+    }
   }
 
   String _sessionTime(DateTime? startedAt) {
@@ -133,7 +237,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
             : status.state.phase == Phase.error
                 ? const Color(0xFFEF6475)
                 : connected
-                    ? const Color(0xFF00FFC8)
+                    ? (isDark ? const Color(0xFF00FFC8) : const Color(0xFF20B879))
                     : const Color(0xFFF59E0B);
     // The emblem surface follows the selected theme only. Connection state
     // changes the V traces, never the circular surface beneath them.
@@ -142,7 +246,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
         ? const Color(0xFF8D7AB8)
         : const Color(0xFFB8A2F5);
     final powerMark = connected
-        ? const Color(0xFF00FFC8)
+        ? (isDark ? const Color(0xFF00FFC8) : const Color(0xFF20B879))
         : confirming
             ? const Color(0xFFFFB52E)
             : !on
@@ -429,71 +533,80 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                           letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 9),
-                      if (connected)
-                        Material(
-                          color: card,
-                          shape: StadiumBorder(
-                            side: BorderSide(color: border),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            onTap: widget.core.testing
-                                ? null
-                                : () => runShowingErrors(
-                                      context,
-                                      widget.core.runTest,
+                      SizedBox(
+                        // Keep the content below the connection status at a
+                        // fixed vertical position before and after connecting.
+                        height: 60,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (connected)
+                              Material(
+                                color: card,
+                                shape: StadiumBorder(
+                                  side: BorderSide(color: border),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: InkWell(
+                                  onTap: widget.core.testing
+                                      ? null
+                                      : () => runShowingErrors(
+                                            context,
+                                            widget.core.runTest,
+                                          ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
                                     ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (widget.core.testing)
-                                    const SizedBox(
-                                      width: 13,
-                                      height: 13,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 1.7,
-                                      ),
-                                    )
-                                  else
-                                    Icon(
-                                      Icons.bolt_rounded,
-                                      size: 16,
-                                      color: pingColor,
-                                    ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    pingText,
-                                    style: baseText.labelLarge?.copyWith(
-                                      color: pingColor,
-                                      fontWeight: FontWeight.w700,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (widget.core.testing)
+                                          const SizedBox(
+                                            width: 13,
+                                            height: 13,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.7,
+                                            ),
+                                          )
+                                        else
+                                          Icon(
+                                            Icons.bolt_rounded,
+                                            size: 16,
+                                            color: pingColor,
+                                          ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          pingText,
+                                          style: baseText.labelLarge?.copyWith(
+                                            color: pingColor,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
+                              )
+                            else
+                              Text(
+                                stateHint,
+                                textAlign: TextAlign.center,
+                                style: baseText.bodySmall?.copyWith(color: muted),
                               ),
-                            ),
-                          ),
-                        )
-                      else
-                        Text(
-                          stateHint,
-                          textAlign: TextAlign.center,
-                          style: baseText.bodySmall?.copyWith(color: muted),
+                            if (connected && status.proxy?.startedAt != null) ...[
+                              const SizedBox(height: 5),
+                              Text(
+                                _sessionTime(status.proxy!.startedAt),
+                                style: baseText.labelSmall?.copyWith(
+                                  color: muted,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                      if (connected && status.proxy?.startedAt != null) ...[
-                        const SizedBox(height: 5),
-                        Text(
-                          _sessionTime(status.proxy!.startedAt),
-                          style: baseText.labelSmall?.copyWith(
-                            color: muted,
-                          ),
-                        ),
-                      ],
+                      ),
                 const Spacer(),
                 ValueListenableBuilder(
                   valueListenable: Updates.available,
@@ -514,6 +627,134 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                     );
                   },
                 ),
+                if (Platform.isAndroid && widget.settings.showAppRouting) ...[
+                  Center(
+                    child: FractionallySizedBox(
+                      widthFactor: 0.86,
+                      child: Material(
+                        color: card,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(13),
+                          side: BorderSide(color: border),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  _HomeModeChip(
+                                    title: 'All Apps',
+                                    selected: _connectionMode == 'vpn' && _appRoutingMode == 'all',
+                                    onTap: () => _selectHomeMode('all'),
+                                    foreground: foreground,
+                                    muted: muted,
+                                  ),
+                                  _HomeModeChip(
+                                    title: 'Selected Apps',
+                                    selected: _connectionMode == 'vpn' && _appRoutingMode == 'exclude',
+                                    onTap: () => _selectHomeMode('exclude'),
+                                    foreground: foreground,
+                                    muted: muted,
+                                  ),
+                                  _HomeModeChip(
+                                    title: 'Proxy',
+                                    selected: _connectionMode == 'proxy',
+                                    onTap: () => _selectHomeMode('proxy'),
+                                    foreground: foreground,
+                                    muted: muted,
+                                  ),
+                                ],
+                              ),
+                              if (_connectionMode == 'vpn' && _appRoutingMode == 'exclude')
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: Material(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.045)
+                                        : const Color(0xFFF1F4F8),
+                                    borderRadius: BorderRadius.circular(9),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(9),
+                                      onTap: _openBypassApps,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.apps_rounded, size: 15, color: muted),
+                                            const SizedBox(width: 7),
+                                            Expanded(
+                                              child: Text(
+                                                'Bypass Apps',
+                                                style: baseText.labelMedium?.copyWith(
+                                                  color: foreground,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              '$_selectedAppCount bypassed',
+                                              style: baseText.labelSmall?.copyWith(color: muted),
+                                            ),
+                                            const SizedBox(width: 3),
+                                            Icon(Icons.chevron_right_rounded, size: 17, color: muted),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (_connectionMode == 'proxy')
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: Material(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.045)
+                                        : const Color(0xFFF1F4F8),
+                                    borderRadius: BorderRadius.circular(9),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(9),
+                                      onTap: _changeHomeProxyPort,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.settings_ethernet_rounded, size: 15, color: muted),
+                                            const SizedBox(width: 7),
+                                            Expanded(
+                                              child: Text(
+                                                'Proxy port',
+                                                style: baseText.labelMedium?.copyWith(
+                                                  color: foreground,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              '$_proxyPort',
+                                              style: baseText.labelMedium?.copyWith(
+                                                color: foreground,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Icon(Icons.edit_rounded, size: 14, color: muted),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                ],
                 _ActionCard(
                   onTap: widget.onOpenServers,
                   child: Row(
@@ -678,6 +919,60 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
   }
 }
 
+
+class _HomeModeChip extends StatelessWidget {
+  const _HomeModeChip({
+    required this.title,
+    required this.selected,
+    required this.onTap,
+    required this.foreground,
+    required this.muted,
+  });
+
+  final String title;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color foreground;
+  final Color muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: selected
+              ? const Color(0xFF28BA89).withValues(alpha: dark ? 0.19 : 0.13)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: SizedBox(
+              height: 32,
+              child: Center(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: selected ? const Color(0xFF28BA89) : muted,
+                    fontSize: 11,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Retained as a small reusable home-routing row for the next UI iteration.
+// ignore: unused_element
 class _ActionCard extends StatelessWidget {
   const _ActionCard({required this.onTap, required this.child});
 

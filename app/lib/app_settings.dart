@@ -36,6 +36,9 @@ class AppSettings extends ChangeNotifier {
   /// location is shown by its country either way.
   bool showPublicIp = false;
 
+  /// Shows the Android app-routing shortcut on the home screen; off by default.
+  bool showAppRouting = false;
+
   /// How a new account signs in (the accounts page's row).
   SignInMethod signInMethod = SignInMethod.api;
 
@@ -189,6 +192,7 @@ class AppSettings extends ChangeNotifier {
             CloseAction.values.asNameMap()[j['close']] ?? CloseAction.ask;
         s.firstRun = j['welcome_done'] != true;
         s.showPublicIp = j['show_public_ip'] == true;
+        s.showAppRouting = j['show_app_routing'] == true;
         s.signInMethod =
             SignInMethod.values.asNameMap()[j['signin_method']] ??
             s.signInMethod;
@@ -240,6 +244,7 @@ class AppSettings extends ChangeNotifier {
     SignInMethod? signInMethod,
     bool? firstRun,
     bool? showPublicIp,
+    bool? showAppRouting,
     DateTime? lowQuotaDismissedAt,
     String? dismissedUpdate,
     DateTime? updateCheckedAt,
@@ -260,6 +265,7 @@ class AppSettings extends ChangeNotifier {
     this.autostart = autostart ?? this.autostart;
     this.autoConnect = autoConnect ?? this.autoConnect;
     this.showPublicIp = showPublicIp ?? this.showPublicIp;
+    this.showAppRouting = showAppRouting ?? this.showAppRouting;
     this.lowQuotaDismissedAt = lowQuotaDismissedAt ?? this.lowQuotaDismissedAt;
     this.dismissedUpdate = dismissedUpdate ?? this.dismissedUpdate;
     this.updateCheckedAt = updateCheckedAt ?? this.updateCheckedAt;
@@ -292,6 +298,7 @@ class AppSettings extends ChangeNotifier {
           'signin_method': signInMethod.name,
           'welcome_done': !firstRun,
           'show_public_ip': showPublicIp,
+          'show_app_routing': showAppRouting,
           'low_quota_dismissed_at': lowQuotaDismissedAt?.toIso8601String(),
           'dismissed_update': dismissedUpdate,
           'update_checked_at': updateCheckedAt?.toIso8601String(),

@@ -155,17 +155,23 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                 }
+                "setAppRoutingMode" -> {
+                    val mode = call.argument<String>("mode") ?: ""
+                    if (CoreService.setAppRoutingMode(this, mode)) {
+                        result.success(null)
+                    } else {
+                        result.error("invalid_app_routing_mode", "Unknown app routing mode", null)
+                    }
+                }
                 "installedApps" -> inBackground(result) { installedApps() }
                 "appIcon" -> {
                     val pkg = call.argument<String>("package") ?: ""
                     inBackground(result) { appIcon(pkg) }
                 }
                 "appRouting" -> inBackground(result) {
-                    // The page shows the region's apps installed since the
-                    // last look checked; the VPN takes them at once.
-                    if (CoreService.appMode(this) == CoreService.MODE_EXCLUDE &&
-                        CoreService.suggest(this, force = true)
-                    ) {
+                    // If an older Vista build saved Selected Apps as Include,
+                    // migrate those choices to Bypass and refresh the live VPN.
+                    if (CoreService.migrateLegacyAppMode(this)) {
                         CoreService.reconnect(this)
                     }
                     mapOf(
@@ -173,7 +179,6 @@ class MainActivity : FlutterActivity() {
                         "bypass" to CoreService.appSet(this, CoreService.BYPASS).toList(),
                         "only" to CoreService.appSet(this, CoreService.ONLY).toList(),
                         "declined" to CoreService.appSet(this, CoreService.DECLINED).toList(),
-                        "region" to CoreService.regionAppList(),
                     )
                 }
                 "setAppRouting" -> {

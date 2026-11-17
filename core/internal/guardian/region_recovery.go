@@ -26,6 +26,14 @@ func SetRegionRecovery(retry func(*http.Request) (*http.Response, error)) {
 }
 
 func do(req *http.Request) (*http.Response, error) {
+	// The existing upstream session can carry Guardian renewal traffic when
+	// it is healthy. Other API requests retain their configured control-plane
+	// transport and the existing region-recovery behavior.
+	if isRenewalTunnelRequest(req) {
+		if resp, err, handled := controlplane.TryRenewalTunnel(req); handled {
+			return resp, err
+		}
+	}
 	resp, err := controlplane.Do(req)
 	if err != nil {
 		// An explicit cancellation belongs to the caller and must never be
@@ -108,4 +116,24 @@ func doubledPathRequest(req *http.Request) (*http.Request, bool) {
 		out.Body = body
 	}
 	return out, true
+}
+
+
+// isRenewalTunnelRequest limits session-borrowed requests to idempotent
+// Guardian token reads and the explicit account activation POST.
+func isRenewalTunnelRequest(req *http.Request) bool {
+	if req == nil || req.URL == nil ||
+		!strings.EqualFold(req.URL.Scheme, "https") ||
+		!strings.EqualFold(req.URL.Host, strings.TrimPrefix(DefaultEndpoint, "https://")) {
+		return false
+	}
+	switch {
+	case req.URL.Path == "/api/v1/fpn/token" &&
+		(req.Method == http.MethodGet || req.Method == http.MethodHead):
+		return true
+	case req.URL.Path == "/api/v1/fpn/activate" && req.Method == http.MethodPost:
+		return true
+	default:
+		return false
+	}
 }
