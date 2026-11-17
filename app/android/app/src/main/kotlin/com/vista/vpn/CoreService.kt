@@ -345,14 +345,8 @@ class CoreService : VpnService() {
         // allow list would be empty, and Android would send every app, this
         // one included, into the VPN (a loop). Then it is as if none were
         // chosen. The Builder keeps what was added, so the count decides.
-        if (appMode(this) == MODE_INCLUDE) {
-            var added = 0
-            each(appSet(this, ONLY) - packageName) {
-                builder.addAllowedApplication(it)
-                added++
-            }
-            if (added > 0) return
-        }
+        // Bypass mode is the only per-app selection mode: selected apps
+        // are excluded from the VPN, and every other app uses the tunnel.
         builder.addDisallowedApplication(packageName)
         each(appSet(this, BYPASS) - packageName) { builder.addDisallowedApplication(it) }
     }
@@ -500,20 +494,29 @@ class CoreService : VpnService() {
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-        fun appMode(context: Context): String = prefs(context).getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
+        fun appMode(context: Context): String {
+            val stored = prefs(context).getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
+            // Migrate older Vista Include settings to Arman's bypass behavior.
+            if (stored == MODE_INCLUDE) {
+                prefs(context).edit().putString(MODE, MODE_EXCLUDE).apply()
+                return MODE_EXCLUDE
+            }
+            return if (stored == MODE_ALL) MODE_ALL else MODE_EXCLUDE
+        }
 
         fun appSet(context: Context, key: String): Set<String> = prefs(context).getStringSet(key, emptySet()) ?: emptySet()
 
         /** Keeps the app choice: the mode and the sets. */
         fun setAppRouting(context: Context, mode: String, sets: Map<String, Set<String>>) {
-            val edit = prefs(context).edit().putString(MODE, mode)
+            val safeMode = if (mode == MODE_ALL) MODE_ALL else MODE_EXCLUDE
+            val edit = prefs(context).edit().putString(MODE, safeMode)
             for ((key, packages) in sets) edit.putStringSet(key, packages)
             edit.apply()
         }
 
         /** Changes only the active routing mode; saved app selections are untouched. */
         fun setAppRoutingMode(context: Context, mode: String): Boolean {
-            if (mode !in setOf(MODE_ALL, MODE_EXCLUDE, MODE_INCLUDE)) return false
+            if (mode !in setOf(MODE_ALL, MODE_EXCLUDE)) return false
             prefs(context).edit().putString(MODE, mode).apply()
             reconnect(context)
             return true
