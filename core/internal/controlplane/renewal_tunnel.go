@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -102,4 +101,3 @@ func TryRenewalTunnel(req *http.Request) (*http.Response, error, bool) {
 	return resp, nil, true
 }
 
-var _ = errors.Is
