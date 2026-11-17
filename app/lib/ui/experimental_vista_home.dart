@@ -478,71 +478,80 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                           letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 9),
-                      if (connected)
-                        Material(
-                          color: card,
-                          shape: StadiumBorder(
-                            side: BorderSide(color: border),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            onTap: widget.core.testing
-                                ? null
-                                : () => runShowingErrors(
-                                      context,
-                                      widget.core.runTest,
+                      SizedBox(
+                        // Keep the content below the connection status at a
+                        // fixed vertical position before and after connecting.
+                        height: 60,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (connected)
+                              Material(
+                                color: card,
+                                shape: StadiumBorder(
+                                  side: BorderSide(color: border),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: InkWell(
+                                  onTap: widget.core.testing
+                                      ? null
+                                      : () => runShowingErrors(
+                                            context,
+                                            widget.core.runTest,
+                                          ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
                                     ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (widget.core.testing)
-                                    const SizedBox(
-                                      width: 13,
-                                      height: 13,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 1.7,
-                                      ),
-                                    )
-                                  else
-                                    Icon(
-                                      Icons.bolt_rounded,
-                                      size: 16,
-                                      color: pingColor,
-                                    ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    pingText,
-                                    style: baseText.labelLarge?.copyWith(
-                                      color: pingColor,
-                                      fontWeight: FontWeight.w700,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (widget.core.testing)
+                                          const SizedBox(
+                                            width: 13,
+                                            height: 13,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.7,
+                                            ),
+                                          )
+                                        else
+                                          Icon(
+                                            Icons.bolt_rounded,
+                                            size: 16,
+                                            color: pingColor,
+                                          ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          pingText,
+                                          style: baseText.labelLarge?.copyWith(
+                                            color: pingColor,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
+                                ),
+                              )
+                            else
+                              Text(
+                                stateHint,
+                                textAlign: TextAlign.center,
+                                style: baseText.bodySmall?.copyWith(color: muted),
                               ),
-                            ),
-                          ),
-                        )
-                      else
-                        Text(
-                          stateHint,
-                          textAlign: TextAlign.center,
-                          style: baseText.bodySmall?.copyWith(color: muted),
+                            if (connected && status.proxy?.startedAt != null) ...[
+                              const SizedBox(height: 5),
+                              Text(
+                                _sessionTime(status.proxy!.startedAt),
+                                style: baseText.labelSmall?.copyWith(
+                                  color: muted,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                      if (connected && status.proxy?.startedAt != null) ...[
-                        const SizedBox(height: 5),
-                        Text(
-                          _sessionTime(status.proxy!.startedAt),
-                          style: baseText.labelSmall?.copyWith(
-                            color: muted,
-                          ),
-                        ),
-                      ],
+                      ),
                 const Spacer(),
                 ValueListenableBuilder(
                   valueListenable: Updates.available,
