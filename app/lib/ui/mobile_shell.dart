@@ -100,6 +100,7 @@ class _MobileShellState extends State<MobileShell> {
         (_tab == 0
             ? ExperimentalVistaHome(
                 core: core,
+                settings: settings,
                 onOpenServers: openServers,
                 onOpenAccounts: openAccounts,
                 onOpenSettings: () => setState(() => _tab = 1),
