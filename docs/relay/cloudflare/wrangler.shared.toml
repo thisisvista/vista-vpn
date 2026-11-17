@@ -1,0 +1,23 @@
+# Dedicated public shared Guardian relay.
+# Replace namespace_id values with unused positive integers in your account.
+# Rate limits are approximate and applied separately in each Cloudflare location.
+name = "vista-shared-guardian-relay"
+main = "./shared-worker.js"
+compatibility_date = "2026-11-17"
+workers_dev = true
+
+[[ratelimits]]
+name = "USER_LIMITER"
+namespace_id = "9401"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+[[ratelimits]]
+name = "IP_LIMITER"
+namespace_id = "9402"
+
+  [ratelimits.simple]
+  limit = 3000
+  period = 60
