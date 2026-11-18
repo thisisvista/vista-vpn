@@ -10,6 +10,7 @@ import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../core/ports.dart';
 import '../core/updates.dart';
+import '../update_manifest.dart';
 import '../l10n/app_localizations.dart';
 import 'bypass_apps_page.dart';
 import 'format.dart';
