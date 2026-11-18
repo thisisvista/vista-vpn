@@ -10,6 +10,7 @@ import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../core/ports.dart';
 import '../core/updates.dart';
+import '../update_manifest.dart';
 import '../l10n/app_localizations.dart';
 import 'bypass_apps_page.dart';
 import 'format.dart';
@@ -41,7 +42,6 @@ class ExperimentalVistaHome extends StatefulWidget {
 class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     with SingleTickerProviderStateMixin {
   Timer? _clock;
-  String? _dismissedUpdateVersion;
   String _appRoutingMode = 'exclude';
   String _connectionMode = 'vpn';
   int _selectedAppCount = 0;
@@ -612,29 +612,16 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                   valueListenable: Updates.available,
                   builder: (context, release, _) {
                     if (release == null ||
-                        _dismissedUpdateVersion == release.version) {
+                        (!release.mandatory &&
+                            release.version == widget.settings.dismissedUpdate)) {
                       return const SizedBox(height: 16);
                     }
                     return Padding(
                       padding: const EdgeInsets.only(top: 16, bottom: 16),
                       child: _HomeUpdateBanner(
-                        version: release.version,
-                        onDownload: () {
-                          // On Android, match the About page's Download
-                          // action: hand the release URL to the system browser
-                          // instead of downloading/installing the APK in-app.
-                          setState(
-                            () => _dismissedUpdateVersion = release.version,
-                          );
-                          if (Platform.isAndroid) {
-                            unawaited(openDownload(context, release));
-                          } else {
-                            Updates.update(release);
-                          }
-                        },
-                        onDismiss: () => setState(
-                          () => _dismissedUpdateVersion = release.version,
-                        ),
+                        core: widget.core,
+                        settings: widget.settings,
+                        release: release,
                       ),
                     );
                   },
@@ -1143,23 +1130,88 @@ class _VistaCircuitPainter extends CustomPainter {
 
 class _HomeUpdateBanner extends StatelessWidget {
   const _HomeUpdateBanner({
-    required this.version,
-    required this.onDownload,
-    required this.onDismiss,
+    required this.core,
+    required this.settings,
+    required this.release,
   });
 
-  final String version;
-  final VoidCallback onDownload;
-  final VoidCallback onDismiss;
+  final CoreController core;
+  final AppSettings settings;
+  final Release release;
 
   @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    const accent = Color(0xFF00DDB5);
-    final theme = Theme.of(context);
-    return ValueListenableBuilder<bool>(
-      valueListenable: Updates.installingApk,
-      builder: (context, installing, _) => Material(
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([
+      core,
+      Updates.failure,
+      Updates.installingApk,
+    ]),
+    builder: (context, _) {
+      final l = AppLocalizations.of(context);
+      final theme = Theme.of(context);
+      const accent = Color(0xFF00DDB5);
+      final update = core.status?.update;
+      final mine = update?.version == release.version;
+      final dismiss = release.mandatory
+          ? null
+          : () => settings.update(dismissedUpdate: release.version);
+
+      String message;
+      String actionLabel;
+      IconData actionIcon;
+      VoidCallback? action;
+      bool busy = false;
+      double? progress;
+
+      // Match Arman's two paths: without a core update state, open the
+      // release page; with one, use the in-app updater.
+      if (Updates.installingApk.value) {
+        busy = true;
+        message = l.updateInstalling(release.version);
+        actionLabel = message;
+        actionIcon = Icons.downloading_rounded;
+        action = null;
+      } else if (update == null) {
+        message = release.mandatory
+            ? l.updateRequired(release.version)
+            : l.updateAvailable(release.version);
+        actionLabel = l.download;
+        actionIcon = Icons.download_rounded;
+        action = release.url.isEmpty
+            ? null
+            : () => unawaited(openDownload(context, release));
+      } else if (mine && (update.downloading || update.installing)) {
+        busy = true;
+        progress = update.downloading ? update.progress : null;
+        message = update.downloading
+            ? l.updateDownloading(release.version)
+            : l.updateInstalling(release.version);
+        actionLabel = update.downloading
+            ? l.updateDownloading(release.version)
+            : l.updateInstalling(release.version);
+        actionIcon = Icons.downloading_rounded;
+        action = null;
+      } else {
+        final failure = Updates.failure.value ??
+            (mine && update.failed ? update.error : null);
+        if (failure != null) {
+          message = l.updateFailed(release.version);
+          actionLabel = l.tryAgain;
+          actionIcon = Icons.refresh_rounded;
+          action = () => Updates.update(release);
+        } else {
+          message = release.mandatory
+              ? l.updateRequired(release.version)
+              : mine && update.ready
+                  ? l.updateReady(release.version)
+                  : l.updateAvailable(release.version);
+          actionLabel = l.updateNow;
+          actionIcon = Icons.system_update_alt_rounded;
+          action = () => Updates.update(release);
+        }
+      }
+
+      return Material(
         color: theme.colorScheme.surface.withValues(alpha: 0.96),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -1169,55 +1221,75 @@ class _HomeUpdateBanner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              const Icon(Icons.system_update_alt_rounded, color: accent, size: 25),
+              Icon(
+                busy
+                    ? Icons.downloading_rounded
+                    : Icons.system_update_alt_rounded,
+                color: accent,
+                size: 25,
+              ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  Updates.failure.value == null
-                      ? l.updateAvailable(version)
-                      : l.updateFailed(version),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    height: 1.35,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      message,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                      ),
+                    ),
+                    if (busy) ...[
+                      const SizedBox(height: 7),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 4,
+                          color: accent,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: installing ? null : onDownload,
-                style: FilledButton.styleFrom(
-                  backgroundColor: accent,
-                  foregroundColor: const Color(0xFF06231F),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
+              if (!busy)
+                FilledButton.icon(
+                  onPressed: action,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: const Color(0xFF06231F),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    visualDensity: VisualDensity.compact,
                   ),
-                  visualDensity: VisualDensity.compact,
+                  icon: Icon(actionIcon, size: 17),
+                  label: Text(actionLabel, maxLines: 1),
                 ),
-                icon: installing
-                    ? const SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.download_rounded, size: 17),
-                label: Text(
-                  installing ? l.updateDownloading(version) : l.download,
-                  maxLines: 1,
+              if (busy)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              ),
               const SizedBox(width: 4),
-              IconButton(
-                tooltip: l.dismiss,
-                onPressed: onDismiss,
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.close_rounded, size: 19),
-              ),
+              if (!busy && dismiss != null)
+                IconButton(
+                  tooltip: l.dismiss,
+                  onPressed: dismiss,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close_rounded, size: 19),
+                ),
             ],
           ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
 }
 
