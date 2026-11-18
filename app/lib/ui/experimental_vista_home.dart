@@ -1164,7 +1164,13 @@ class _HomeUpdateBanner extends StatelessWidget {
 
       // Match Arman's two paths: without a core update state, open the
       // release page; with one, use the in-app updater.
-      if (update == null) {
+      if (Updates.installingApk.value) {
+        busy = true;
+        message = l.updateInstalling(release.version);
+        actionLabel = message;
+        actionIcon = Icons.downloading_rounded;
+        action = null;
+      } else if (update == null) {
         message = release.mandatory
             ? l.updateRequired(release.version)
             : l.updateAvailable(release.version);
@@ -1179,7 +1185,9 @@ class _HomeUpdateBanner extends StatelessWidget {
         message = update.downloading
             ? l.updateDownloading(release.version)
             : l.updateInstalling(release.version);
-        actionLabel = update.downloading ? l.updateDownloading(release.version) : l.updateInstalling(release.version);
+        actionLabel = update.downloading
+            ? l.updateDownloading(release.version)
+            : l.updateInstalling(release.version);
         actionIcon = Icons.downloading_rounded;
         action = null;
       } else {
@@ -1213,7 +1221,9 @@ class _HomeUpdateBanner extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                busy ? Icons.downloading_rounded : Icons.system_update_alt_rounded,
+                busy
+                    ? Icons.downloading_rounded
+                    : Icons.system_update_alt_rounded,
                 color: accent,
                 size: 25,
               ),
