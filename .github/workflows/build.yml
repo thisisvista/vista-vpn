@@ -489,6 +489,8 @@ jobs:
           if-no-files-found: error
 
   release:
+    permissions:
+      contents: write
     needs: [test, windows, android, linux, linux-desktop, macos]
     # A platform left out by PLATFORMS is skipped, not failed: the release
     # goes on with the rest.
@@ -554,6 +556,10 @@ jobs:
               --notes-file notes.md
             gh release upload "$GITHUB_REF_NAME" release/* \
               --repo "$GITHUB_REPOSITORY" --clobber
+            # Publish an existing UI-created draft only after all assets upload.
+            release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" --jq .id)"
+            gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" \
+              --method PATCH --field draft=false
           else
             gh release create "$GITHUB_REF_NAME" release/* \
               --repo "$GITHUB_REPOSITORY" \
