@@ -5,7 +5,7 @@
 </div>
 <br>
 
-<p align="center"><img src="../images/logo.png" width="128" alt="Vista VPN"></p>
+<p align="center"><img src="../images/logo.png?v=20261118" width="128" alt="Vista VPN"></p>
 
 <h1 align="center">Vista VPN</h1>
 
