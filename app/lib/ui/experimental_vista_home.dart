@@ -41,7 +41,6 @@ class ExperimentalVistaHome extends StatefulWidget {
 class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
     with SingleTickerProviderStateMixin {
   Timer? _clock;
-  String? _dismissedUpdateVersion;
   String _appRoutingMode = 'exclude';
   String _connectionMode = 'vpn';
   int _selectedAppCount = 0;
@@ -612,7 +611,8 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                   valueListenable: Updates.available,
                   builder: (context, release, _) {
                     if (release == null ||
-                        _dismissedUpdateVersion == release.version) {
+                        (!release.mandatory &&
+                            release.version == widget.settings.dismissedUpdate)) {
                       return const SizedBox(height: 16);
                     }
                     return Padding(
@@ -623,18 +623,24 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                           // On Android, match the About page's Download
                           // action: hand the release URL to the system browser
                           // instead of downloading/installing the APK in-app.
-                          setState(
-                            () => _dismissedUpdateVersion = release.version,
-                          );
+                          if (!release.mandatory) {
+                            widget.settings.update(
+                              dismissedUpdate: release.version,
+                            );
+                          }
                           if (Platform.isAndroid) {
                             unawaited(openDownload(context, release));
                           } else {
                             Updates.update(release);
                           }
                         },
-                        onDismiss: () => setState(
-                          () => _dismissedUpdateVersion = release.version,
-                        ),
+                        onDismiss: () {
+                          if (!release.mandatory) {
+                            widget.settings.update(
+                              dismissedUpdate: release.version,
+                            );
+                          }
+                        },
                       ),
                     );
                   },
