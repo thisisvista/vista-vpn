@@ -619,7 +619,19 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                       padding: const EdgeInsets.only(top: 16, bottom: 16),
                       child: _HomeUpdateBanner(
                         version: release.version,
-                        onDownload: () => Updates.update(release),
+                        onDownload: () {
+                          // On Android, match the About page's Download
+                          // action: hand the release URL to the system browser
+                          // instead of downloading/installing the APK in-app.
+                          setState(
+                            () => _dismissedUpdateVersion = release.version,
+                          );
+                          if (Platform.isAndroid) {
+                            unawaited(openDownload(context, release));
+                          } else {
+                            Updates.update(release);
+                          }
+                        },
                         onDismiss: () => setState(
                           () => _dismissedUpdateVersion = release.version,
                         ),
