@@ -237,7 +237,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
             : status.state.phase == Phase.error
                 ? const Color(0xFFEF6475)
                 : connected
-                    ? (isDark ? const Color(0xFF00FFC8) : const Color(0xFF20B879))
+                    ? const Color(0xFF00FFC8)
                     : const Color(0xFFF59E0B);
     // The emblem surface follows the selected theme only. Connection state
     // changes the V traces, never the circular surface beneath them.
@@ -246,7 +246,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
         ? const Color(0xFF8D7AB8)
         : const Color(0xFFB8A2F5);
     final powerMark = connected
-        ? (isDark ? const Color(0xFF00FFC8) : const Color(0xFF20B879))
+        ? const Color(0xFF00FFC8)
         : confirming
             ? const Color(0xFFFFB52E)
             : !on
