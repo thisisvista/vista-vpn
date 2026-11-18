@@ -620,27 +620,22 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                       child: _HomeUpdateBanner(
                         version: release.version,
                         onDownload: () {
-                          // On Android, match the About page's Download
-                          // action: hand the release URL to the system browser
-                          // instead of downloading/installing the APK in-app.
-                          if (!release.mandatory) {
-                            widget.settings.update(
-                              dismissedUpdate: release.version,
-                            );
-                          }
+                          // Match Arman's banner: downloading does not dismiss
+                          // the notice. On Android, open the release URL in the
+                          // system browser; keep the existing updater elsewhere.
                           if (Platform.isAndroid) {
                             unawaited(openDownload(context, release));
                           } else {
                             Updates.update(release);
                           }
                         },
-                        onDismiss: () {
-                          if (!release.mandatory) {
-                            widget.settings.update(
-                              dismissedUpdate: release.version,
-                            );
-                          }
-                        },
+                        onDismiss: release.mandatory
+                            ? null
+                            : () {
+                                widget.settings.update(
+                                  dismissedUpdate: release.version,
+                                );
+                              },
                       ),
                     );
                   },
@@ -1151,12 +1146,12 @@ class _HomeUpdateBanner extends StatelessWidget {
   const _HomeUpdateBanner({
     required this.version,
     required this.onDownload,
-    required this.onDismiss,
+    this.onDismiss,
   });
 
   final String version;
   final VoidCallback onDownload;
-  final VoidCallback onDismiss;
+  final VoidCallback? onDismiss;
 
   @override
   Widget build(BuildContext context) {
@@ -1213,12 +1208,13 @@ class _HomeUpdateBanner extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              IconButton(
-                tooltip: l.dismiss,
-                onPressed: onDismiss,
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.close_rounded, size: 19),
-              ),
+              if (onDismiss != null)
+                IconButton(
+                  tooltip: l.dismiss,
+                  onPressed: onDismiss,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close_rounded, size: 19),
+                ),
             ],
           ),
         ),
