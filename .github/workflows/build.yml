@@ -489,8 +489,6 @@ jobs:
           if-no-files-found: error
 
   release:
-    permissions:
-      contents: write
     needs: [test, windows, android, linux, linux-desktop, macos]
     # A platform left out by PLATFORMS is skipped, not failed: the release
     # goes on with the rest.
