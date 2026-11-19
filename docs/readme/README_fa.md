@@ -1,6 +1,6 @@
 <div align="center" dir="ltr">
 
-[🇺🇸 English](../../README.md) &nbsp;/&nbsp; <img src="../images/flag-lion-sun.svg" width="20" alt="پرچم شیر و خورشید"> **فارسی**
+[English](../../README.md) &nbsp;/&nbsp; **فارسی**
 
 </div>
 <br>
