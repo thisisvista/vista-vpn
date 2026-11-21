@@ -169,11 +169,8 @@ class MainActivity : FlutterActivity() {
                     inBackground(result) { appIcon(pkg) }
                 }
                 "appRouting" -> inBackground(result) {
-                    // If an older Vista build saved Selected Apps as Include,
-                    // migrate those choices to Bypass and refresh the live VPN.
-                    if (CoreService.migrateLegacyAppMode(this)) {
-                        CoreService.reconnect(this)
-                    }
+                    // Include is now a supported Tunnel Selected Apps mode;
+                    // do not reinterpret its saved selections as legacy bypasses.
                     mapOf(
                         "mode" to CoreService.appMode(this),
                         "bypass" to CoreService.appSet(this, CoreService.BYPASS).toList(),
