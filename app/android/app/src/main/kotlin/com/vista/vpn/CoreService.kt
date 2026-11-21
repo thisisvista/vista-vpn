@@ -298,13 +298,16 @@ class CoreService : VpnService() {
                 .setSession(getString(R.string.app_name))
                 .setMtu(mtu)
                 .addAddress("172.19.0.1", 30)
-                .addRoute("0.0.0.0", 0)
+                .addAddress("fdfe:dcba:9876::1", 126)
+            // An empty Tunnel Selected Apps list is fail-closed: establish
+            // no routes, so even newly installed apps stay outside the VPN.
+            if (applyApps(builder)) {
+                builder.addRoute("0.0.0.0", 0)
                 // The tunnel answers DNS sent here (core/mobile), with
                 // addresses that stand for names.
-                .addDnsServer("172.19.0.2")
-                .addAddress("fdfe:dcba:9876::1", 126)
-                .addRoute("::", 0)
-            applyApps(builder)
+                builder.addDnsServer("172.19.0.2")
+                builder.addRoute("::", 0)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) builder.setMetered(false)
             val tun = builder.establish() ?: return false
             if (!Tun2Socks.start(config, tun)) {
@@ -321,11 +324,10 @@ class CoreService : VpnService() {
     }
 
     /**
-     * In bypass mode, all apps except this app and the selected bypass
-     * apps use the VPN. In All apps mode, every other app uses the VPN.
-     * Apps no longer installed are skipped.
+     * Applies the per-app policy. False means Tunnel Selected Apps has no
+     * installed selections; the caller then establishes no routes at all.
      */
-    private fun applyApps(builder: Builder) {
+    private fun applyApps(builder: Builder): Boolean {
         fun each(packages: Set<String>, add: (String) -> Unit) {
             for (pkg in packages) {
                 try {
@@ -335,16 +337,31 @@ class CoreService : VpnService() {
                 }
             }
         }
-        // "All apps" is a distinct mode: keep the saved bypass list
-        // intact, but do not apply it to this VPN session.
-        if (appMode(this) == MODE_ALL) {
-            builder.addDisallowedApplication(packageName)
-            return
+        return when (appMode(this)) {
+            MODE_ALL -> {
+                builder.addDisallowedApplication(packageName)
+                true
+            }
+            MODE_INCLUDE -> {
+                // Android's allow-list keeps every unselected app, including
+                // apps installed later, outside the VPN. Vista itself is not
+                // in the allow-list, so its core remains outside the tunnel.
+                var hasInstalledSelection = false
+                each(appSet(this, ONLY) - packageName) {
+                    builder.addAllowedApplication(it)
+                    hasInstalledSelection = true
+                }
+                hasInstalledSelection
+            }
+            else -> {
+                // Selected bypass apps connect directly; all others use VPN.
+                builder.addDisallowedApplication(packageName)
+                each(appSet(this, BYPASS) - packageName) {
+                    builder.addDisallowedApplication(it)
+                }
+                true
+            }
         }
-        // Bypass mode is the only per-app selection mode: selected apps
-        // are excluded from the VPN, and every other app uses the tunnel.
-        builder.addDisallowedApplication(packageName)
-        each(appSet(this, BYPASS) - packageName) { builder.addDisallowedApplication(it) }
     }
 
     /** When the VPN interface last came up. */
@@ -490,33 +507,24 @@ class CoreService : VpnService() {
 
         private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-        /** Migrates the old home-screen Include selection into the bypass list. */
-        fun migrateLegacyAppMode(context: Context): Boolean {
-            val p = prefs(context)
-            val stored = p.getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
-            if (stored != MODE_INCLUDE) return false
-            // The old "Selected Apps" entry mistakenly saved checked apps as
-            // Include. Preserve those choices, but apply them as Bypass.
-            val oldBypass = appSet(context, BYPASS)
-            val oldOnly = appSet(context, ONLY)
-            p.edit()
-                .putString(MODE, MODE_EXCLUDE)
-                .putStringSet(BYPASS, oldBypass + oldOnly)
-                .apply()
-            return true
-        }
-
         fun appMode(context: Context): String {
-            migrateLegacyAppMode(context)
             val stored = prefs(context).getString(MODE, MODE_EXCLUDE) ?: MODE_EXCLUDE
-            return if (stored == MODE_ALL) MODE_ALL else MODE_EXCLUDE
+            return when (stored) {
+                MODE_ALL -> MODE_ALL
+                MODE_INCLUDE -> MODE_INCLUDE
+                else -> MODE_EXCLUDE
+            }
         }
 
         fun appSet(context: Context, key: String): Set<String> = prefs(context).getStringSet(key, emptySet()) ?: emptySet()
 
         /** Keeps the app choice: the mode and the sets. */
         fun setAppRouting(context: Context, mode: String, sets: Map<String, Set<String>>) {
-            val safeMode = if (mode == MODE_ALL) MODE_ALL else MODE_EXCLUDE
+            val safeMode = when (mode) {
+                MODE_ALL -> MODE_ALL
+                MODE_INCLUDE -> MODE_INCLUDE
+                else -> MODE_EXCLUDE
+            }
             val edit = prefs(context).edit().putString(MODE, safeMode)
             for ((key, packages) in sets) edit.putStringSet(key, packages)
             edit.apply()
@@ -524,8 +532,7 @@ class CoreService : VpnService() {
 
         /** Changes only the active routing mode; saved app selections are untouched. */
         fun setAppRoutingMode(context: Context, mode: String): Boolean {
-            if (mode !in setOf(MODE_ALL, MODE_EXCLUDE)) return false
-            migrateLegacyAppMode(context)
+            if (mode !in setOf(MODE_ALL, MODE_EXCLUDE, MODE_INCLUDE)) return false
             prefs(context).edit().putString(MODE, mode).apply()
             reconnect(context)
             return true

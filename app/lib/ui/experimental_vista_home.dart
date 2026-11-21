@@ -119,8 +119,10 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
       final routing = await AndroidCore.appRouting();
       if (!mounted) return;
       setState(() {
-        _appRoutingMode = routing.allApps ? 'all' : 'exclude';
-        _selectedAppCount = routing.bypass.length;
+        _appRoutingMode = routing.mode;
+        _selectedAppCount = routing.tunnelSelectedApps
+            ? routing.only.length
+            : routing.bypass.length;
       });
     } catch (_) {
       // The settings page remains available if the native bridge is not ready.
@@ -154,16 +156,16 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
       if (mounted) {
         setState(() {
           _connectionMode = 'vpn';
-          _appRoutingMode = choice;
-          _selectedAppCount = routing.bypass.length;
+          _appRoutingMode = routing.mode;
+          _selectedAppCount = routing.tunnelSelectedApps
+              ? routing.only.length
+              : routing.bypass.length;
         });
       }
     });
   }
 
-  Future<void> _openBypassApps() async {
-    await _selectHomeMode('exclude');
-    if (!mounted) return;
+  Future<void> _openAppRouting() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const BypassAppsPage()),
     );
@@ -652,9 +654,16 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                     muted: muted,
                                   ),
                                   _HomeModeChip(
-                                    title: 'Selected Apps',
+                                    title: 'Bypass',
                                     selected: _connectionMode == 'vpn' && _appRoutingMode == 'exclude',
                                     onTap: () => _selectHomeMode('exclude'),
+                                    foreground: foreground,
+                                    muted: muted,
+                                  ),
+                                  _HomeModeChip(
+                                    title: 'Tunnel',
+                                    selected: _connectionMode == 'vpn' && _appRoutingMode == 'include',
+                                    onTap: () => _selectHomeMode('include'),
                                     foreground: foreground,
                                     muted: muted,
                                   ),
@@ -667,7 +676,8 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                   ),
                                 ],
                               ),
-                              if (_connectionMode == 'vpn' && _appRoutingMode == 'exclude')
+                              if (_connectionMode == 'vpn' &&
+                                  (_appRoutingMode == 'exclude' || _appRoutingMode == 'include'))
                                 Padding(
                                   padding: const EdgeInsets.only(top: 5),
                                   child: Material(
@@ -677,7 +687,7 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                     borderRadius: BorderRadius.circular(9),
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(9),
-                                      onTap: _openBypassApps,
+                                      onTap: _openAppRouting,
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                         child: Row(
@@ -686,7 +696,9 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                             const SizedBox(width: 7),
                                             Expanded(
                                               child: Text(
-                                                'Bypass Apps',
+                                                _appRoutingMode == 'include'
+                                                    ? 'Tunnel Apps'
+                                                    : 'Bypass Apps',
                                                 style: baseText.labelMedium?.copyWith(
                                                   color: foreground,
                                                   fontWeight: FontWeight.w600,
@@ -694,7 +706,9 @@ class _ExperimentalVistaHomeState extends State<ExperimentalVistaHome>
                                               ),
                                             ),
                                             Text(
-                                              '$_selectedAppCount bypassed',
+                                              _appRoutingMode == 'include'
+                                                  ? '$_selectedAppCount selected'
+                                                  : '$_selectedAppCount bypassed',
                                               style: baseText.labelSmall?.copyWith(color: muted),
                                             ),
                                             const SizedBox(width: 3),
