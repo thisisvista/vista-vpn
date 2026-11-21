@@ -1318,7 +1318,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appModeExclude => 'Bypass selected apps';
 
   @override
-  String get appModeInclude => 'Proxy selected apps';
+  String get appModeInclude => 'Tunnel selected apps';
 
   @override
   String get appModeExcludeHint =>

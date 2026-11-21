@@ -20,6 +20,7 @@ class InstalledApp {
 class AppRouting {
   AppRouting({
     this.allApps = false,
+    this.tunnelSelectedApps = false,
     required this.bypass,
     required this.only,
   });
@@ -27,28 +28,43 @@ class AppRouting {
   /// Route every app through the VPN, without changing either saved list.
   bool allApps;
 
-  /// Bypass selected apps: these connect directly.
+  /// Route only explicitly selected apps through the VPN.
+  bool tunnelSelectedApps;
+
+  /// Apps that connect directly when Bypass Selected Apps is active.
   final Set<String> bypass;
 
-  /// Proxy selected apps: only these use the VPN.
+  /// Apps that use the VPN when Tunnel Selected Apps is active.
   final Set<String> only;
 
-  /// Whether [package] is selected to bypass the VPN.
-  bool checked(String package) => !allApps && bypass.contains(package);
+  /// The active routing mode understood by Android.
+  String get mode => allApps
+      ? 'all'
+      : tunnelSelectedApps
+          ? 'include'
+          : 'exclude';
 
-  /// Changes the active list without affecting the other mode's selections.
+  /// Whether [package] is selected in the active per-app mode.
+  bool checked(String package) => allApps
+      ? false
+      : tunnelSelectedApps
+          ? only.contains(package)
+          : bypass.contains(package);
+
+  /// Changes only the active list; the other mode's selections are preserved.
   void toggle(String package, bool value) {
     if (allApps) return;
+    final selected = tunnelSelectedApps ? only : bypass;
     if (value) {
-      bypass.add(package);
+      selected.add(package);
     } else {
-      bypass.remove(package);
+      selected.remove(package);
     }
   }
 
-  /// A key that changes with the choice, to know whether to apply it.
+  /// A key that changes with the mode and either saved selection list.
   String get key => [
-    allApps,
+    mode,
     ...[bypass, only].map((s) => (s.toList()..sort()).join(',')),
   ].join('|');
 }
@@ -245,15 +261,15 @@ class AndroidCore {
     Set<String> set(String key) => {
       for (final p in (m[key] as List<Object?>? ?? const [])) '$p',
     };
-    final storedMode = m['mode'] == 'all' ? 'all' : 'exclude';
-    // Older Vista builds exposed Include mode. Normalize it to the Arman
-    // behavior (bypass selected apps) without moving or deleting either list.
-    if (m['mode'] == 'include') {
-      await _channel.invokeMethod<void>('setAppRoutingMode', {'mode': 'exclude'});
-    }
+    final storedMode = switch (m['mode']) {
+      'all' => 'all',
+      'include' => 'include',
+      _ => 'exclude',
+    };
     appRoutingMode.value = storedMode;
     return AppRouting(
       allApps: storedMode == 'all',
+      tunnelSelectedApps: storedMode == 'include',
       bypass: set('bypass'),
       only: set('only'),
     );
@@ -261,7 +277,7 @@ class AndroidCore {
 
   /// Keeps which apps use the VPN; [apply] sets a running VPN up again.
   static Future<void> setAppRouting(AppRouting r, {required bool apply}) async {
-    final mode = r.allApps ? 'all' : 'exclude';
+    final mode = r.mode;
     await _channel.invokeMethod<void>('setAppRouting', {
       'mode': mode,
       'bypass': r.bypass.toList(),

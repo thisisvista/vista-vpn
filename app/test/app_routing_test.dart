@@ -35,6 +35,22 @@ void main() {
     expect(r.key, isNot(selectedKey));
   });
 
+  test('Tunnel Selected Apps edits only the VPN allow-list', () {
+    final r = AppRouting(
+      tunnelSelectedApps: true,
+      bypass: {'com.example.direct'},
+      only: {'com.example.vpn'},
+    );
+    expect(r.mode, 'include');
+    expect(r.checked('com.example.vpn'), isTrue);
+    expect(r.checked('com.example.direct'), isFalse);
+    r.toggle('com.example.new-vpn', true);
+    expect(r.only, {'com.example.vpn', 'com.example.new-vpn'});
+    expect(r.bypass, {'com.example.direct'});
+    r.toggle('com.example.vpn', false);
+    expect(r.only, {'com.example.new-vpn'});
+  });
+
   test('All apps mode ignores selections without deleting saved bypass list', () {
     final r = AppRouting(
       allApps: true,

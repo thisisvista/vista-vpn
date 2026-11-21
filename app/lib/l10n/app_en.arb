@@ -810,7 +810,7 @@
   },
   "connectionSettings": "Connection settings",
   "appModeExclude": "Bypass selected apps",
-  "appModeInclude": "Proxy selected apps",
+  "appModeInclude": "Tunnel selected apps",
   "appModeExcludeHint": "Selected apps connect directly, not through the VPN: for example banking apps that refuse foreign addresses.",
   "appModeIncludeHint": "Only the selected apps go through the VPN; the others connect directly.",
   "fromRegionList": "Suggested: on the {region} list",
